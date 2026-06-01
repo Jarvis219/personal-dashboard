@@ -1,0 +1,95 @@
+@import 'tailwindcss';
+
+/* Class-based dark mode: `dark:` applies when inside .dark */
+@custom-variant dark (&:where(.dark, .dark *));
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Con trỏ tay cho mọi phần tử tương tác được */
+button:not(:disabled),
+select,
+summary,
+[role='button'],
+input[type='range'],
+input[type='checkbox'],
+input[type='radio'] {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+/* ---- Glassmorphism (theme-aware) ---- */
+.glass {
+  background-color: rgb(255 255 255 / 0.55);
+  border: 1px solid rgb(15 23 42 / 0.08);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+.dark .glass {
+  background-color: rgb(255 255 255 / 0.05);
+  border-color: rgb(255 255 255 / 0.1);
+}
+
+/* ---- Animated aurora background (theme-aware) ---- */
+@keyframes gradient-drift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.bg-aurora {
+  /* Gradient do theme hiện tại gán vào --aurora-gradient (xem useThemeStore). */
+  background: var(
+    --aurora-gradient,
+    linear-gradient(130deg, #020617, #0f172a, #1e1b4b, #0f172a, #020617)
+  );
+  background-size: 300% 300%;
+  animation: gradient-drift 24s ease infinite;
+}
+
+/* ---- Dropdown entrance ---- */
+@keyframes dropdown-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.animate-dropdown {
+  animation: dropdown-in 0.14s ease-out;
+}
+
+/* ---- Thin scrollbar ---- */
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(148 163 184 / 0.4) transparent;
+}
+.scroll-thin::-webkit-scrollbar {
+  width: 6px;
+}
+.scroll-thin::-webkit-scrollbar-thumb {
+  background-color: rgb(148 163 184 / 0.4);
+  border-radius: 9999px;
+}

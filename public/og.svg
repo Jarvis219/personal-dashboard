@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" font-family="'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#020617"/><stop offset="50%" stop-color="#0b1026"/><stop offset="100%" stop-color="#020617"/>
+    </linearGradient>
+    <linearGradient id="title" x1="0" y1="0" x2="1" y2="0.5">
+      <stop offset="0%" stop-color="#38bdf8"/><stop offset="50%" stop-color="#818cf8"/><stop offset="100%" stop-color="#e879f9"/>
+    </linearGradient>
+    <linearGradient id="logo" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#22d3ee"/><stop offset="50%" stop-color="#6366f1"/><stop offset="100%" stop-color="#a855f7"/>
+    </linearGradient>
+    <radialGradient id="oV"><stop offset="0%" stop-color="#a855f7" stop-opacity="0.40"/><stop offset="100%" stop-color="#a855f7" stop-opacity="0"/></radialGradient>
+    <radialGradient id="oC"><stop offset="0%" stop-color="#22d3ee" stop-opacity="0.35"/><stop offset="100%" stop-color="#22d3ee" stop-opacity="0"/></radialGradient>
+    <radialGradient id="gCyan"><stop offset="0%" stop-color="#22d3ee" stop-opacity="0.55"/><stop offset="100%" stop-color="#22d3ee" stop-opacity="0"/></radialGradient>
+    <radialGradient id="gAmber"><stop offset="0%" stop-color="#f59e0b" stop-opacity="0.55"/><stop offset="100%" stop-color="#f59e0b" stop-opacity="0"/></radialGradient>
+    <radialGradient id="gEm"><stop offset="0%" stop-color="#10b981" stop-opacity="0.55"/><stop offset="100%" stop-color="#10b981" stop-opacity="0"/></radialGradient>
+    <radialGradient id="gRose"><stop offset="0%" stop-color="#f43f5e" stop-opacity="0.5"/><stop offset="100%" stop-color="#f43f5e" stop-opacity="0"/></radialGradient>
+    <radialGradient id="gViolet"><stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.5"/><stop offset="100%" stop-color="#8b5cf6" stop-opacity="0"/></radialGradient>
+    <filter id="soft" x="-70%" y="-70%" width="240%" height="240%"><feGaussianBlur stdDeviation="34"/></filter>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="120" cy="80" r="380" fill="url(#oC)"/>
+  <circle cx="1120" cy="560" r="420" fill="url(#oV)"/>
+
+  <!-- ================= HERO (big) ================= -->
+  <g>
+    <rect x="40" y="40" width="540" height="286" rx="26" fill="#ffffff" fill-opacity="0.05" stroke="#ffffff" stroke-opacity="0.10"/>
+    <rect x="72" y="74" width="58" height="58" rx="15" fill="url(#logo)"/>
+    <g fill="#ffffff">
+      <rect x="84" y="86" width="14" height="14" rx="4"/><rect x="104" y="86" width="14" height="14" rx="4" opacity="0.75"/>
+      <rect x="84" y="106" width="14" height="14" rx="4" opacity="0.75"/><rect x="104" y="106" width="14" height="14" rx="4"/>
+    </g>
+    <text x="146" y="112" fill="#f8fafc" font-size="27" font-weight="800">Personal Dashboard</text>
+    <text x="72" y="206" fill="url(#title)" font-size="54" font-weight="800">Mọi thứ bạn cần</text>
+    <text x="72" y="262" fill="url(#title)" font-size="54" font-weight="800">trong một trang</text>
+    <text x="72" y="302" fill="#94a3b8" font-size="20">Bảng điều khiển cá nhân — mở mỗi ngày.</text>
+  </g>
+
+  <!-- ================= STATS (lower-left wide) ================= -->
+  <rect x="40" y="346" width="540" height="244" rx="26" fill="#ffffff" fill-opacity="0.05" stroke="#ffffff" stroke-opacity="0.10"/>
+  <text x="72" y="394" fill="#5eead4" font-size="16" font-weight="700" letter-spacing="2">TẬP TRUNG 7 NGÀY</text>
+  <text x="72" y="448" fill="#f8fafc" font-size="46" font-weight="800">28<tspan font-size="22" font-weight="600" fill="#94a3b8"> phiên</tspan></text>
+  <g fill="#14b8a6">
+    <rect x="320" y="500" width="30" height="50" rx="6" opacity="0.85"/>
+    <rect x="356" y="476" width="30" height="74" rx="6" opacity="0.85"/>
+    <rect x="392" y="514" width="30" height="36" rx="6" opacity="0.85"/>
+    <rect x="428" y="452" width="30" height="98" rx="6"/>
+    <rect x="464" y="496" width="30" height="54" rx="6" opacity="0.85"/>
+    <rect x="500" y="468" width="30" height="82" rx="6" opacity="0.85"/>
+    <rect x="536" y="510" width="30" height="40" rx="6" opacity="0.85"/>
+  </g>
+
+  <!-- ================= CLOCK ================= -->
+  <circle cx="750" cy="140" r="150" fill="url(#gCyan)" filter="url(#soft)"/>
+  <rect x="600" y="40" width="300" height="196" rx="26" fill="#ffffff" fill-opacity="0.05" stroke="#ffffff" stroke-opacity="0.10"/>
+  <text x="628" y="150" fill="#f8fafc" font-size="68" font-weight="800" font-family="'Courier New', monospace">09:41</text>
+  <text x="630" y="190" fill="#67e8f9" font-size="19" font-weight="600">Thứ Hai · 1 tháng 6</text>
+
+  <!-- ================= WEATHER ================= -->
+  <circle cx="1040" cy="140" r="140" fill="url(#gAmber)" filter="url(#soft)"/>
+  <rect x="920" y="40" width="240" height="196" rx="26" fill="#ffffff" fill-opacity="0.05" stroke="#ffffff" stroke-opacity="0.10"/>
+  <g transform="translate(982,118)" stroke="#fbbf24" stroke-width="5" stroke-linecap="round">
+    <circle r="26" fill="#fbbf24" stroke="none"/>
+    <g fill="none">
+      <line x1="0" y1="-44" x2="0" y2="-36"/><line x1="0" y1="44" x2="0" y2="36"/>
+      <line x1="-44" y1="0" x2="-36" y2="0"/><line x1="44" y1="0" x2="36" y2="0"/>
+      <line x1="-31" y1="-31" x2="-25" y2="-25"/><line x1="31" y1="31" x2="25" y2="25"/>
+      <line x1="-31" y1="31" x2="-25" y2="25"/><line x1="31" y1="-31" x2="25" y2="-25"/>
+    </g>
+  </g>
+  <text x="1036" y="138" fill="#f8fafc" font-size="58" font-weight="800">28°</text>
+  <text x="1038" y="196" fill="#fcd34d" font-size="19" font-weight="600">Nắng đẹp</text>
+
+  <!-- ================= POMODORO (tall) ================= -->
+  <circle cx="720" cy="420" r="150" fill="url(#gEm)" filter="url(#soft)"/>
+  <rect x="600" y="256" width="240" height="334" rx="26" fill="#ffffff" fill-opacity="0.05" stroke="#ffffff" stroke-opacity="0.10"/>
+  <text x="628" y="300" fill="#6ee7b7" font-size="16" font-weight="700" letter-spacing="2">POMODORO</text>
+  <g transform="translate(720,420)" fill="none" stroke-width="12" stroke-linecap="round">
+    <circle r="74" stroke="#ffffff" stroke-opacity="0.12"/>
+    <path d="M0 -74 a74 74 0 0 1 64 100" stroke="#34d399"/>
+  </g>
+  <text x="720" y="432" fill="#f8fafc" font-size="40" font-weight="800" font-family="'Courier New', monospace" text-anchor="middle">25:00</text>
+  <text x="720" y="540" fill="#94a3b8" font-size="20" text-anchor="middle">Đang tập trung</text>
+
+  <!-- ================= TODO ================= -->
+  <circle cx="1010" cy="330" r="130" fill="url(#gViolet)" filter="url(#soft)"/>
+  <rect x="860" y="256" width="300" height="158" rx="26" fill="#ffffff" fill-opacity="0.05" stroke="#ffffff" stroke-opacity="0.10"/>
+  <text x="888" y="298" fill="#c4b5fd" font-size="16" font-weight="700" letter-spacing="2">VIỆC CẦN LÀM</text>
+  <circle cx="902" cy="334" r="13" fill="#8b5cf6"/>
+  <path d="M896 334 l5 5 l9 -11" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="926" y="342" fill="#64748b" font-size="22" text-decoration="line-through">Thiết kế OG image</text>
+  <circle cx="902" cy="378" r="13" fill="none" stroke="#94a3b8" stroke-width="2.5"/>
+  <text x="926" y="386" fill="#e2e8f0" font-size="22">Nghe nhạc lo-fi</text>
+
+  <!-- ================= LO-FI ================= -->
+  <circle cx="1010" cy="500" r="130" fill="url(#gRose)" filter="url(#soft)"/>
+  <rect x="860" y="432" width="300" height="158" rx="26" fill="#ffffff" fill-opacity="0.05" stroke="#ffffff" stroke-opacity="0.10"/>
+  <text x="888" y="474" fill="#fda4af" font-size="16" font-weight="700" letter-spacing="2">NHẠC LO-FI</text>
+  <circle cx="906" cy="528" r="22" fill="#f43f5e"/>
+  <path d="M900 518 v20 M912 514 v24" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>
+  <g fill="#fb7185">
+    <rect x="952" y="520" width="9" height="26" rx="4"/>
+    <rect x="968" y="506" width="9" height="40" rx="4"/>
+    <rect x="984" y="528" width="9" height="18" rx="4"/>
+    <rect x="1000" y="500" width="9" height="46" rx="4"/>
+    <rect x="1016" y="516" width="9" height="30" rx="4"/>
+    <rect x="1032" y="508" width="9" height="38" rx="4"/>
+    <rect x="1048" y="524" width="9" height="22" rx="4"/>
+    <rect x="1064" y="512" width="9" height="34" rx="4"/>
+    <rect x="1080" y="522" width="9" height="24" rx="4"/>
+    <rect x="1096" y="510" width="9" height="36" rx="4"/>
+    <rect x="1112" y="526" width="9" height="20" rx="4"/>
+  </g>
+</svg>
