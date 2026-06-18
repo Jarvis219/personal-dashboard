@@ -147,6 +147,7 @@ export function LofiPlayer() {
     false,
   )
   const [dragIndex, setDragIndex] = useState<number | null>(null)
+  const activeTrackRef = useRef<HTMLLIElement>(null)
   const playlistRef = useRef(playlist)
   playlistRef.current = playlist
   const currentRef = useRef(current)
@@ -197,6 +198,12 @@ export function LofiPlayer() {
     if (audioRef.current) audioRef.current.volume = volume
     yt.setVolume(volume)
   }, [volume, yt.ready, yt])
+
+  // Cuộn danh sách tới bài đang phát mỗi khi đổi bài.
+  useEffect(() => {
+    if (current < 0) return
+    activeTrackRef.current?.scrollIntoView({ block: 'nearest' })
+  }, [current])
 
   // Đổi chế độ -> tạm dừng nguồn còn lại.
   useEffect(() => {
@@ -490,6 +497,7 @@ export function LofiPlayer() {
           {playlist.map((tk, i) => (
             <li
               key={tk.id + i}
+              ref={i === current ? activeTrackRef : undefined}
               draggable
               onDragStart={() => setDragIndex(i)}
               onDragOver={(e) => e.preventDefault()}
