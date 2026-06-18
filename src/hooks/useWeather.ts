@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { cityById, GEO_ID } from '../lib/cities'
 import type { WeatherData } from '../types'
 
 const CACHE_PREFIX = 'dashboard.weather.'
 const CACHE_TTL = 10 * 60 * 1000 // 10 phút
+const REFRESH_INTERVAL = 60 * 60 * 1000 // tự cập nhật mỗi 1 giờ
 
 type State =
   | { status: 'loading' }
@@ -69,18 +70,19 @@ function getPosition(): Promise<GeolocationPosition> {
 // `selection` là id của thành phố trong CITIES, hoặc GEO_ID để dùng vị trí thực.
 export function useWeather(selection: string) {
   const [state, setState] = useState<State>({ status: 'loading' })
+  // Toạ độ đã giải xong cho selection hiện tại (tái dùng cho lần làm mới âm thầm,
+  // tránh hỏi lại quyền định vị mỗi giờ).
+  const locationRef = useRef<{ lat: number; lon: number; city: string } | null>(
+    null,
+  )
 
   useEffect(() => {
     let cancelled = false
-    setState({ status: 'loading' })
+    locationRef.current = null
 
-    const cached = readCache(selection)
-    if (cached) {
-      setState({ status: 'ready', data: cached })
-      return
-    }
-
-    ;(async () => {
+    // Giải toạ độ từ selection (chỉ làm 1 lần, sau đó lấy từ ref).
+    const resolveLocation = async () => {
+      if (locationRef.current) return locationRef.current
       let lat: number
       let lon: number
       let city: string
@@ -105,22 +107,50 @@ export function useWeather(selection: string) {
         city = c.name
       }
 
+      const loc = { lat, lon, city }
+      locationRef.current = loc
+      return loc
+    }
+
+    // silent = làm mới ngầm: không bật loading, lỗi thì giữ nguyên dữ liệu cũ.
+    const run = async (silent: boolean) => {
       try {
+        const { lat, lon, city } = await resolveLocation()
         const data = await fetchWeather(lat, lon, city)
         if (cancelled) return
         localStorage.setItem(CACHE_PREFIX + selection, JSON.stringify(data))
         setState({ status: 'ready', data })
       } catch (err) {
-        if (cancelled) return
+        if (cancelled || silent) return
         setState({
           status: 'error',
           message: err instanceof Error ? err.message : 'Lỗi không xác định',
         })
       }
-    })()
+    }
+
+    const cached = readCache(selection)
+    if (cached) {
+      setState({ status: 'ready', data: cached })
+    } else {
+      setState({ status: 'loading' })
+      run(false)
+    }
+
+    // Tự cập nhật định kỳ mỗi giờ (âm thầm).
+    const interval = setInterval(() => run(true), REFRESH_INTERVAL)
+
+    // Quay lại tab -> làm mới âm thầm ngay lập tức.
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return
+      run(true)
+    }
+    document.addEventListener('visibilitychange', onVisible)
 
     return () => {
       cancelled = true
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisible)
     }
   }, [selection])
 
