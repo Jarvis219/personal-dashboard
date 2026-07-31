@@ -1,7 +1,16 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useI18n } from '../i18n/useI18n'
+import { useLocalStorage } from '../hooks/useLocalStorage'
 import { solarToLunar } from '../lib/lunar'
+import { alive } from '../lib/syncable'
+import { useUiStore } from '../store/useUiStore'
+import type { Todo } from '../types'
 import { GlassCard } from './GlassCard'
+import { ChevronLeftIcon, ChevronRightIcon } from './icons'
+
+const pad = (n: number) => n.toString().padStart(2, '0')
+const keyOf = (y: number, m: number, d: number) =>
+  `${y}-${pad(m + 1)}-${pad(d)}`
 
 // Số ô trống đầu tháng (tuần bắt đầu từ Thứ Hai).
 function leadingBlanks(year: number, month: number): number {
@@ -25,6 +34,19 @@ export function CalendarWidget() {
     year: today.getFullYear(),
     month: today.getMonth(),
   })
+  const { selectedDate, setSelectedDate } = useUiStore()
+  const [todos] = useLocalStorage<Todo[]>('dashboard.todos', [])
+
+  // Ngày nào có việc chưa xong -> chấm dưới ô. Đây là mối nối giữa Lịch và Todo:
+  // trước đây hai widget này hoàn toàn không biết đến nhau.
+  const dueCount = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const item of alive(todos)) {
+      if (!item.due || item.done) continue
+      map.set(item.due, (map.get(item.due) ?? 0) + 1)
+    }
+    return map
+  }, [todos])
 
   const daysInMonth = new Date(view.year, view.month + 1, 0).getDate()
   const blanks = leadingBlanks(view.year, view.month)
@@ -33,10 +55,7 @@ export function CalendarWidget() {
     ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
   ]
 
-  const isToday = (d: number) =>
-    d === today.getDate() &&
-    view.month === today.getMonth() &&
-    view.year === today.getFullYear()
+  const todayKey = keyOf(today.getFullYear(), today.getMonth(), today.getDate())
 
   const shift = (delta: number) =>
     setView((v) => {
@@ -47,24 +66,32 @@ export function CalendarWidget() {
       }
     })
 
-  const goToday = () =>
+  const goToday = () => {
     setView({ year: today.getFullYear(), month: today.getMonth() })
+    setSelectedDate(null)
+  }
 
   const monthLabel = new Intl.DateTimeFormat(locale, {
     month: 'long',
     year: 'numeric',
   }).format(new Date(view.year, view.month))
+  const fullDate = new Intl.DateTimeFormat(locale, {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  })
+
+  const lunarToday = solarToLunar(
+    today.getDate(),
+    today.getMonth() + 1,
+    today.getFullYear(),
+  )
 
   return (
-    <GlassCard glow="hover:shadow-rose-500/20" className="flex flex-col">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-200/70">
-          {t('calendar.title')}
-        </h2>
-        <button
-          onClick={goToday}
-          className="rounded-full bg-rose-500/15 px-2.5 py-0.5 text-xs font-medium text-rose-700 transition hover:bg-rose-500/25 dark:text-rose-200"
-        >
+    <GlassCard className="flex flex-col">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="card-title">{t('calendar.title')}</h2>
+        <button onClick={goToday} className="badge hover:brightness-110">
           {t('calendar.today')}
         </button>
       </div>
@@ -72,20 +99,20 @@ export function CalendarWidget() {
       <div className="mt-3 flex items-center justify-between">
         <button
           onClick={() => shift(-1)}
-          className="rounded-lg px-2 py-1 text-slate-500 transition hover:bg-black/5 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white"
           aria-label={t('calendar.prev')}
+          className="icon-btn h-8 w-8"
         >
-          ‹
+          <ChevronLeftIcon className="h-4 w-4" />
         </button>
         <span className="text-base font-semibold capitalize text-slate-900 dark:text-white">
           {monthLabel}
         </span>
         <button
           onClick={() => shift(1)}
-          className="rounded-lg px-2 py-1 text-slate-500 transition hover:bg-black/5 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white"
           aria-label={t('calendar.next')}
+          className="icon-btn h-8 w-8"
         >
-          ›
+          <ChevronRightIcon className="h-4 w-4" />
         </button>
       </div>
 
@@ -93,58 +120,76 @@ export function CalendarWidget() {
         {weekdayLabels(locale).map((w, i) => (
           <div
             key={i}
-            className="py-1 font-medium capitalize text-slate-400 dark:text-slate-500"
+            className="py-1 font-medium capitalize text-slate-600 dark:text-slate-400"
           >
             {w}
           </div>
         ))}
         {cells.map((d, i) => {
           if (d === null) return <div key={i} className="aspect-square" />
+          const key = keyOf(view.year, view.month, d)
           const lunar = solarToLunar(d, view.month + 1, view.year)
           // Mùng 1 âm lịch hiện "ngày/tháng" để dễ nhận ra đầu tháng âm.
           const lunarLabel =
-            lunar.day === 1 ? `${lunar.day}/${lunar.month}` : `${lunar.day}`
-          const today = isToday(d)
+            lunar.day === 1
+              ? `${lunar.day}/${lunar.month}${lunar.leap ? '+' : ''}`
+              : `${lunar.day}`
+          const isToday = key === todayKey
+          const isSelected = key === selectedDate
+          const due = dueCount.get(key) ?? 0
           return (
-            <div
+            <button
               key={i}
+              onClick={() => setSelectedDate(isSelected ? null : key)}
+              aria-pressed={isSelected}
+              aria-label={`${fullDate.format(new Date(view.year, view.month, d))}${
+                due ? ` — ${t('todo.remaining', { n: due })}` : ''
+              }`}
               className={
-                'flex aspect-square flex-col items-center justify-center rounded-lg ' +
-                (today
-                  ? 'bg-rose-500 text-white shadow-sm shadow-rose-500/40'
-                  : 'text-slate-700 hover:bg-black/5 dark:text-slate-200 dark:hover:bg-white/10')
+                'relative flex aspect-square flex-col items-center justify-center rounded-lg transition ' +
+                (isSelected
+                  ? 'bg-indigo-500 text-white shadow-sm shadow-indigo-500/40'
+                  : isToday
+                    ? 'ring-2 ring-indigo-400 text-slate-900 dark:text-white'
+                    : 'text-slate-700 hover:bg-black/[0.06] dark:text-slate-200 dark:hover:bg-white/10')
               }
             >
-              <span className="text-sm font-medium leading-none">{d}</span>
+              <span className="text-sm font-medium leading-none tabular-nums">
+                {d}
+              </span>
               <span
                 className={
-                  'mt-0.5 text-[9px] leading-none ' +
-                  (today
-                    ? 'text-rose-100'
+                  'mt-0.5 text-[11px] leading-none tabular-nums ' +
+                  (isSelected
+                    ? 'text-indigo-100'
                     : lunar.day === 1
-                      ? 'font-medium text-rose-500 dark:text-rose-300'
-                      : 'text-slate-400 dark:text-slate-500')
+                      ? 'font-medium text-indigo-600 dark:text-indigo-300'
+                      : 'text-slate-500 opacity-70 dark:text-slate-400')
                 }
               >
                 {lunarLabel}
               </span>
-            </div>
+              {due > 0 && (
+                <span
+                  className={
+                    'absolute bottom-0.5 h-1 w-1 rounded-full ' +
+                    (isSelected ? 'bg-white' : 'bg-rose-500')
+                  }
+                  aria-hidden="true"
+                />
+              )}
+            </button>
           )
         })}
       </div>
 
       {/* Âm lịch hôm nay */}
-      <p className="mt-3 text-center text-xs text-slate-500 dark:text-slate-400">
+      <p className="mt-3 text-center text-xs text-slate-600 dark:text-slate-400">
         {t('calendar.lunarToday')}{' '}
-        <span className="font-medium text-rose-600 dark:text-rose-300">
-          {(() => {
-            const l = solarToLunar(
-              today.getDate(),
-              today.getMonth() + 1,
-              today.getFullYear(),
-            )
-            return `${l.day}/${l.month}${l.leap ? ' ' + t('calendar.leap') : ''}`
-          })()}
+        <span className="font-medium text-slate-900 dark:text-slate-100">
+          {`${lunarToday.day}/${lunarToday.month}${
+            lunarToday.leap ? ' ' + t('calendar.leap') : ''
+          }`}
         </span>
       </p>
     </GlassCard>

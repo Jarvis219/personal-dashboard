@@ -31,16 +31,84 @@ button:disabled {
   cursor: not-allowed;
 }
 
-/* ---- Glassmorphism (theme-aware) ---- */
+/* ---- Token biểu đồ ----
+   Bảng màu 3 slot đã chạy qua validator trên đúng bề mặt kính của app
+   (light #eef4fa, dark #1e2739): đạt dải sáng, sàn chroma, tách CVD all-pairs
+   (ΔE 9.2 light / 9.4 dark) và sàn thị lực thường (24.0 / 20.9). Light mode có
+   contrast < 3:1 ở orange/aqua -> mỗi số liệu luôn kèm NHÃN CHỮ, không bao giờ
+   để màu tự mang nghĩa. Bậc dark là bậc riêng cho nền tối, không phải đảo màu. */
+:root {
+  --viz-1: #2a78d6;
+  --viz-2: #eb6834;
+  --viz-3: #1baf7a;
+  --viz-track: rgb(15 23 42 / 0.07);
+  --viz-baseline: rgb(15 23 42 / 0.18);
+}
+.dark {
+  --viz-1: #3987e5;
+  --viz-2: #d95926;
+  --viz-3: #199e70;
+  --viz-track: rgb(255 255 255 / 0.1);
+  --viz-baseline: rgb(255 255 255 / 0.2);
+}
+
+/* ---- Focus ----
+   Nhiều input trước đây dùng `outline-none` và chỉ đổi màu border 1px — quá mờ
+   trên nền kính để thấy được (WCAG 2.4.11). Một vòng focus dùng chung, rõ ràng,
+   cho MỌI phần tử tương tác. */
+:where(button, a, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid rgb(129 140 248 / 0.9);
+  outline-offset: 2px;
+  border-radius: 0.375rem;
+}
+
+/* ---- Glassmorphism (theme-aware) ----
+   Thêm highlight cạnh trên (inset) để mặt kính có hướng sáng: nền là gradient
+   phẳng nên chỉ blur thôi thì card đọc như hình chữ nhật tối, không ra "kính". */
 .glass {
-  background-color: rgb(255 255 255 / 0.55);
+  background-image: linear-gradient(
+    to bottom,
+    rgb(255 255 255 / 0.7),
+    rgb(255 255 255 / 0.45)
+  );
   border: 1px solid rgb(15 23 42 / 0.08);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.6),
+    0 8px 32px -8px rgb(15 23 42 / 0.18);
 }
 .dark .glass {
-  background-color: rgb(255 255 255 / 0.05);
-  border-color: rgb(255 255 255 / 0.1);
+  background-image: linear-gradient(
+    to bottom,
+    rgb(255 255 255 / 0.075),
+    rgb(255 255 255 / 0.035)
+  );
+  border-color: rgb(255 255 255 / 0.12);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.08),
+    0 8px 32px -8px rgb(0 0 0 / 0.5);
+}
+
+/* ---- Panel nổi (dropdown, modal, toast) ----
+   `.glass` dành cho card nằm TRÊN nền gradient. Panel nổi thì đè lên nội dung
+   khác, nên cùng độ trong suốt đó sẽ khiến chữ trong panel lẫn vào chữ phía sau
+   — phải gần như đục. Vẫn giữ blur để không mất cảm giác kính. */
+.glass-panel {
+  background-color: rgb(248 250 252 / 0.96);
+  border: 1px solid rgb(15 23 42 / 0.12);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.7),
+    0 16px 48px -12px rgb(15 23 42 / 0.35);
+}
+.dark .glass-panel {
+  background-color: rgb(20 27 45 / 0.97);
+  border-color: rgb(255 255 255 / 0.14);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.08),
+    0 16px 48px -12px rgb(0 0 0 / 0.7);
 }
 
 /* ---- Animated aurora background (theme-aware) ---- */
@@ -62,7 +130,9 @@ button:disabled {
     --aurora-gradient,
     linear-gradient(130deg, #020617, #0f172a, #1e1b4b, #0f172a, #020617)
   );
-  background-size: 300% 300%;
+  /* 300% khiến chỉ ~1/3 dải màu lọt vào khung -> nền đọc như một mảng phẳng và
+     animation gần như vô hình. 160% thì thật sự thấy màu chuyển. */
+  background-size: 160% 160%;
   animation: gradient-drift 24s ease infinite;
 }
 
@@ -92,4 +162,228 @@ button:disabled {
 .scroll-thin::-webkit-scrollbar-thumb {
   background-color: rgb(148 163 184 / 0.4);
   border-radius: 9999px;
+}
+
+/* ================================================================
+   Các class dùng chung — thay cho việc mỗi widget tự chọn style riêng.
+   ================================================================ */
+
+/* Tiêu đề card: một màu trung tính cho tất cả. Trước đây mỗi widget một hue
+   (10 màu accent khác nhau, có 3 cặp gần trùng) nên bảng màu vừa rối vừa vô
+   nghĩa; và amber/yellow-600 trên kính sáng chỉ đạt ~2.6:1. */
+.card-title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #475569; /* slate-600 */
+}
+.dark .card-title {
+  color: #cbd5e1; /* slate-300 */
+}
+
+/* Chữ phụ đạt AA: slate-500 đơn lẻ chỉ ~3.0:1 trên kính tối, slate-400 chỉ
+   ~2.2:1 trên kính sáng. */
+.muted {
+  color: #475569; /* slate-600 */
+}
+.dark .muted {
+  color: #cbd5e1; /* slate-300 */
+}
+.muted-xs {
+  font-size: 0.75rem;
+  color: #52607a;
+}
+.dark .muted-xs {
+  color: #b6c2d4;
+}
+
+/* Đường kẻ chia: white/10 là vô hình ở dark mode. */
+.divider-t {
+  border-top: 1px solid rgb(15 23 42 / 0.09);
+}
+.dark .divider-t {
+  border-top-color: rgb(255 255 255 / 0.14);
+}
+.divider-b {
+  border-bottom: 1px solid rgb(15 23 42 / 0.09);
+}
+.dark .divider-b {
+  border-bottom-color: rgb(255 255 255 / 0.14);
+}
+
+/* Nút icon: hình 36px nhưng vùng bấm 44px qua ::after (khuyến nghị của WCAG
+   2.5.8 / HIG) — phóng to visual sẽ làm vỡ layout các hàng dày đặc. */
+.icon-btn {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  height: 2.25rem;
+  width: 2.25rem;
+  border-radius: 0.5rem;
+  color: #475569;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+.icon-btn::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+}
+.icon-btn:hover:not(:disabled) {
+  background-color: rgb(15 23 42 / 0.06);
+  color: #0f172a;
+}
+.dark .icon-btn {
+  color: #cbd5e1;
+}
+.dark .icon-btn:hover:not(:disabled) {
+  background-color: rgb(255 255 255 / 0.1);
+  color: #fff;
+}
+
+/* Vùng bấm 44px cho các nút nhỏ không dùng .icon-btn (ô tick, mũi tên lịch…) */
+.hit::after {
+  content: '';
+  position: absolute;
+  inset: -50%;
+  min-width: 44px;
+  min-height: 44px;
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
+}
+
+/* Điều khiển chỉ hiện khi hover -> trên cảm ứng KHÔNG có hover, nên nút xoá và
+   tay kéo trước đây là không thể dùng được trên điện thoại. */
+.reveal,
+.reveal-card {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.group:hover .reveal,
+.reveal:focus-visible,
+.group:focus-within .reveal {
+  opacity: 1;
+}
+.group\/move:hover .reveal-card,
+.reveal-card:focus-visible {
+  opacity: 1;
+}
+@media (hover: none) {
+  .reveal,
+  .reveal-card {
+    opacity: 0.65;
+  }
+}
+
+/* Input dùng chung */
+.field {
+  min-width: 0;
+  border-radius: 0.5rem;
+  border: 1px solid rgb(15 23 42 / 0.1);
+  background-color: rgb(15 23 42 / 0.04);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  color: #0f172a;
+}
+.field::placeholder {
+  color: #5b6a83; /* đủ 4.5:1 trên kính sáng */
+}
+.dark .field {
+  border-color: rgb(255 255 255 / 0.12);
+  background-color: rgb(255 255 255 / 0.06);
+  color: #fff;
+}
+.dark .field::placeholder {
+  color: #a5b2c6;
+}
+
+/* Nút chính: một màu thương hiệu duy nhất, không alpha lung tung (/80 vs /90). */
+.btn-primary {
+  flex: none;
+  border-radius: 0.5rem;
+  background-color: #6366f1;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #fff;
+  box-shadow: 0 8px 16px -8px rgb(99 102 241 / 0.6);
+  transition: background-color 0.15s ease;
+}
+.btn-primary:hover:not(:disabled) {
+  background-color: #818cf8;
+}
+.btn-primary:disabled {
+  opacity: 0.5;
+}
+
+/* Nút phụ */
+.btn-ghost {
+  border-radius: 0.5rem;
+  border: 1px solid rgb(15 23 42 / 0.1);
+  background-color: rgb(15 23 42 / 0.04);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #334155;
+  transition: background-color 0.15s ease;
+}
+.btn-ghost:hover:not(:disabled) {
+  background-color: rgb(15 23 42 / 0.08);
+}
+.dark .btn-ghost {
+  border-color: rgb(255 255 255 / 0.12);
+  background-color: rgb(255 255 255 / 0.06);
+  color: #e2e8f0;
+}
+.dark .btn-ghost:hover:not(:disabled) {
+  background-color: rgb(255 255 255 / 0.1);
+}
+
+/* Badge chỉ-đọc ở góc card */
+.badge {
+  border-radius: 9999px;
+  background-color: rgb(99 102 241 / 0.14);
+  padding: 0.125rem 0.625rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: #4338ca;
+}
+.dark .badge {
+  background-color: rgb(99 102 241 / 0.25);
+  color: #c7d2fe;
+}
+
+/* Empty state: icon mờ + dòng dẫn dắt, căn giữa cả vùng còn lại của card. */
+.empty-state {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1.5rem 1rem;
+  text-align: center;
+}
+
+/* ---- Tôn trọng prefers-reduced-motion ----
+   Trang đang chạy đồng thời gradient 24s, 3 canvas rAF, và nhiều animate-pulse.
+   Canvas tự bail-out trong JS (xem useReducedMotion); phần CSS tắt ở đây. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .bg-aurora {
+    animation: none;
+    background-size: 100% 100%;
+  }
 }

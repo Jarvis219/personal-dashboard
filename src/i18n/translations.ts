@@ -57,6 +57,7 @@ const vi: Dict = {
   'theme.dark': 'Tối',
   'lang.aria': 'Đổi ngôn ngữ',
 
+  'greeting.night': 'Khuya rồi',
   'greeting.morning': 'Chào buổi sáng',
   'greeting.noon': 'Chào buổi trưa',
   'greeting.afternoon': 'Chào buổi chiều',
@@ -159,6 +160,121 @@ const vi: Dict = {
   'user.no': 'Không',
   'user.deleteAll': 'Xóa hết',
   'user.resetBtn': '♻️ Reset toàn bộ dashboard',
+
+  // ---- Chung ----
+  'common.undo': 'Hoàn tác',
+  'common.retry': 'Thử lại',
+  'common.edit': 'Sửa',
+  'common.done': 'Xong',
+  'common.dismiss': 'Đóng',
+
+  // ---- Gợi ý lần đầu ----
+  'hint.tip': '⌘K mở bảng lệnh · kéo ⠿ để sắp xếp widget',
+  'hint.dismiss': 'Ẩn gợi ý',
+
+  // ---- Todo bổ sung ----
+  'todo.deleted': 'Đã xóa một việc',
+  'todo.edit': 'Sửa nội dung',
+  'todo.due': 'Hạn',
+  'todo.dueToday': 'Hôm nay',
+  'todo.dueTomorrow': 'Mai',
+  'todo.dueNone': 'Bỏ hạn',
+  'todo.overdue': 'Quá hạn',
+  'todo.priority': 'Ưu tiên',
+  'todo.priorityHigh': 'Cao',
+  'todo.priorityNormal': 'Thường',
+  'todo.duplicate': 'Việc này đã có trong danh sách',
+  'todo.reorder': 'Kéo để sắp xếp',
+  'todo.filterAll': 'Tất cả',
+  'todo.filterActive': 'Chưa xong',
+  'todo.filterDone': 'Đã xong',
+  'todo.emptyActive': 'Xong hết rồi! 🎉',
+  'todo.emptyDone': 'Chưa có việc nào hoàn thành.',
+
+  // ---- Pomodoro bổ sung ----
+  'pomodoro.longBreak': 'Nghỉ dài',
+  'pomodoro.longBreakMin': 'Nghỉ dài (phút)',
+  'pomodoro.cycleLen': 'Số phiên trước nghỉ dài',
+  'pomodoro.cycle': 'Phiên {n}/{total}',
+  'pomodoro.autoStart': 'Tự động chạy tiếp',
+  'pomodoro.skip': 'Bỏ qua phiên',
+  'pomodoro.notifyWorkDone': 'Hết giờ làm việc — nghỉ chút nhé!',
+  'pomodoro.notifyBreakDone': 'Hết giờ nghỉ — quay lại làm việc!',
+  'pomodoro.enableNotify': '🔔 Bật thông báo',
+  'pomodoro.notifyBlocked': 'Thông báo đã bị chặn trong cài đặt trình duyệt.',
+
+  // ---- Habit bổ sung ----
+  'habit.best': 'Kỷ lục {n} ngày',
+  'habit.rename': 'Đổi tên thói quen',
+  'habit.toggleAria': '{name}, ngày {date}, {state}',
+  'habit.stateDone': 'đã làm',
+  'habit.stateNotDone': 'chưa làm',
+  'habit.deleted': 'Đã xóa một thói quen',
+  'habit.heatCount': '{done}/{total} thói quen',
+
+  // ---- Bookmark bổ sung ----
+  'bm.deleted': 'Đã xóa một bookmark',
+  'bm.rename': 'Đổi tên',
+  'bm.duplicate': 'Link này đã có',
+  'bm.reorder': 'Kéo để sắp xếp',
+
+  // ---- Notes bổ sung ----
+  'notes.chars': '{n} ký tự',
+
+  // ---- Weather bổ sung ----
+  'weather.updatedAt': 'Cập nhật {time}',
+  'weather.refresh': 'Làm mới',
+  'weather.geoDenied': 'Không có quyền định vị — đang dùng {city}',
+
+  // ---- Lofi bổ sung ----
+  'lofi.titleFailed': 'Không lấy được tiêu đề',
+  'lofi.retryTitle': 'Thử lấy lại tiêu đề',
+  'lofi.deleted': 'Đã xóa một bài',
+  'lofi.seek': 'Tua',
+  'lofi.station': 'Chọn đài',
+  'lofi.enableAmbient': '🔊 Bật lại âm thanh nền',
+  'lofi.moveUp': 'Lên trên',
+  'lofi.moveDown': 'Xuống dưới',
+  'lofi.descGroove': 'Ambient / downtempo thư giãn',
+  'lofi.descDrone': 'Nhạc không gian, trầm mặc',
+  'lofi.descLush': 'Giọng hát nhẹ, beat chill',
+  'lofi.descFluid': 'Lo-fi hip-hop / future soul',
+
+  // ---- Stats bổ sung ----
+  'stats.todosDone': 'Việc đã xong',
+  'stats.focusMin': 'Phút tập trung',
+  'stats.mSessions': 'Phiên',
+  'stats.mTasks': 'Việc',
+  'stats.mMinutes': 'Phút',
+  'stats.source': 'Tính từ phiên Pomodoro và việc đã hoàn thành',
+  'stats.empty': 'Chưa có dữ liệu. Chạy một phiên Pomodoro để bắt đầu.',
+
+  // ---- Command palette bổ sung ----
+  'cmd.groupQuick': 'Thêm nhanh',
+  'cmd.groupActions': 'Hành động',
+  'cmd.groupTodo': 'Việc cần làm',
+  'cmd.groupBookmarks': 'Bookmark',
+  'cmd.groupWidgets': 'Widget',
+  'cmd.groupTheme': 'Giao diện',
+  'cmd.groupLang': 'Ngôn ngữ',
+  'cmd.groupDanger': 'Vùng nguy hiểm',
+  'cmd.addTodo': 'Thêm việc: “{text}”',
+  'cmd.openBookmark': 'Mở bookmark',
+  'cmd.resetConfirm': 'Chắc chưa? Bấm Enter lần nữa để xóa toàn bộ',
+  'cmd.footer': '↑↓ chọn · ↵ chạy · esc đóng · + thêm việc',
+
+  // ---- Auth / sync bổ sung ----
+  'auth.syncError': 'Lỗi đồng bộ',
+  'auth.signInError': 'Không đăng nhập được. Thử lại nhé.',
+  'auth.signingIn': 'Đang đăng nhập…',
+
+  // ---- Sao lưu / reset bổ sung ----
+  'user.importConfirm': 'Nhập {n} mục từ file? Dữ liệu hiện tại sẽ bị ghi đè.',
+  'user.importError': 'File sao lưu không hợp lệ.',
+  'user.importBtn': 'Nhập',
+  'user.exported': 'Đã xuất ✓',
+  'user.resetCloud': 'Xóa luôn dữ liệu trên tài khoản cloud',
+  'user.setName': 'Đặt tên của bạn →',
 }
 
 const en: Dict = {
@@ -216,6 +332,7 @@ const en: Dict = {
   'theme.dark': 'Dark',
   'lang.aria': 'Change language',
 
+  'greeting.night': 'Late night',
   'greeting.morning': 'Good morning',
   'greeting.noon': 'Good day',
   'greeting.afternoon': 'Good afternoon',
@@ -318,6 +435,121 @@ const en: Dict = {
   'user.no': 'No',
   'user.deleteAll': 'Delete all',
   'user.resetBtn': '♻️ Reset entire dashboard',
+
+  // ---- Common ----
+  'common.undo': 'Undo',
+  'common.retry': 'Retry',
+  'common.edit': 'Edit',
+  'common.done': 'Done',
+  'common.dismiss': 'Dismiss',
+
+  // ---- First-run hint ----
+  'hint.tip': '⌘K for commands · drag ⠿ to rearrange widgets',
+  'hint.dismiss': 'Dismiss hint',
+
+  // ---- Todo additions ----
+  'todo.deleted': 'Task deleted',
+  'todo.edit': 'Edit task',
+  'todo.due': 'Due',
+  'todo.dueToday': 'Today',
+  'todo.dueTomorrow': 'Tomorrow',
+  'todo.dueNone': 'No due date',
+  'todo.overdue': 'Overdue',
+  'todo.priority': 'Priority',
+  'todo.priorityHigh': 'High',
+  'todo.priorityNormal': 'Normal',
+  'todo.duplicate': 'That task is already on the list',
+  'todo.reorder': 'Drag to reorder',
+  'todo.filterAll': 'All',
+  'todo.filterActive': 'Active',
+  'todo.filterDone': 'Done',
+  'todo.emptyActive': 'All clear! 🎉',
+  'todo.emptyDone': 'Nothing completed yet.',
+
+  // ---- Pomodoro additions ----
+  'pomodoro.longBreak': 'Long break',
+  'pomodoro.longBreakMin': 'Long break (min)',
+  'pomodoro.cycleLen': 'Sessions before long break',
+  'pomodoro.cycle': 'Session {n}/{total}',
+  'pomodoro.autoStart': 'Auto-start next',
+  'pomodoro.skip': 'Skip session',
+  'pomodoro.notifyWorkDone': 'Focus session done — take a break!',
+  'pomodoro.notifyBreakDone': 'Break over — back to work!',
+  'pomodoro.enableNotify': '🔔 Enable notifications',
+  'pomodoro.notifyBlocked': 'Notifications are blocked in your browser settings.',
+
+  // ---- Habit additions ----
+  'habit.best': 'Best {n} days',
+  'habit.rename': 'Rename habit',
+  'habit.toggleAria': '{name}, {date}, {state}',
+  'habit.stateDone': 'done',
+  'habit.stateNotDone': 'not done',
+  'habit.deleted': 'Habit deleted',
+  'habit.heatCount': '{done}/{total} habits',
+
+  // ---- Bookmark additions ----
+  'bm.deleted': 'Bookmark deleted',
+  'bm.rename': 'Rename',
+  'bm.duplicate': 'That link is already saved',
+  'bm.reorder': 'Drag to reorder',
+
+  // ---- Notes additions ----
+  'notes.chars': '{n} characters',
+
+  // ---- Weather additions ----
+  'weather.updatedAt': 'Updated {time}',
+  'weather.refresh': 'Refresh',
+  'weather.geoDenied': 'Location denied — showing {city}',
+
+  // ---- Lofi additions ----
+  'lofi.titleFailed': "Couldn't fetch title",
+  'lofi.retryTitle': 'Retry fetching title',
+  'lofi.deleted': 'Track removed',
+  'lofi.seek': 'Seek',
+  'lofi.station': 'Pick a station',
+  'lofi.enableAmbient': '🔊 Resume ambient sounds',
+  'lofi.moveUp': 'Move up',
+  'lofi.moveDown': 'Move down',
+  'lofi.descGroove': 'Ambient / downtempo chill',
+  'lofi.descDrone': 'Atmospheric space music',
+  'lofi.descLush': 'Sensuous vocals, chill beats',
+  'lofi.descFluid': 'Lo-fi hip-hop / future soul',
+
+  // ---- Stats additions ----
+  'stats.todosDone': 'Tasks done',
+  'stats.focusMin': 'Focus minutes',
+  'stats.mSessions': 'Sessions',
+  'stats.mTasks': 'Tasks',
+  'stats.mMinutes': 'Minutes',
+  'stats.source': 'From Pomodoro sessions and completed tasks',
+  'stats.empty': 'No data yet. Run a Pomodoro session to start.',
+
+  // ---- Command palette additions ----
+  'cmd.groupQuick': 'Quick add',
+  'cmd.groupActions': 'Actions',
+  'cmd.groupTodo': 'Tasks',
+  'cmd.groupBookmarks': 'Bookmarks',
+  'cmd.groupWidgets': 'Widgets',
+  'cmd.groupTheme': 'Theme',
+  'cmd.groupLang': 'Language',
+  'cmd.groupDanger': 'Danger zone',
+  'cmd.addTodo': 'Add task: “{text}”',
+  'cmd.openBookmark': 'Open bookmark',
+  'cmd.resetConfirm': 'Are you sure? Press Enter again to erase everything',
+  'cmd.footer': '↑↓ navigate · ↵ run · esc close · + add task',
+
+  // ---- Auth / sync additions ----
+  'auth.syncError': 'Sync failed',
+  'auth.signInError': "Couldn't sign in. Please try again.",
+  'auth.signingIn': 'Signing in…',
+
+  // ---- Backup / reset additions ----
+  'user.importConfirm': 'Import {n} entries from this file? Current data will be overwritten.',
+  'user.importError': 'That backup file is not valid.',
+  'user.importBtn': 'Import',
+  'user.exported': 'Exported ✓',
+  'user.resetCloud': 'Also delete the data on my cloud account',
+  'user.setName': 'Set your name →',
 }
 
 export const translations: Record<Lang, Dict> = { vi, en }

@@ -1,14 +1,50 @@
-import { useEffect, useRef, useState } from 'react'
+import {
+  DndContext,
+  type DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useI18n } from '../i18n/useI18n'
 import { useLocalStorage } from '../hooks/useLocalStorage'
 import { useYouTubePlayer } from '../hooks/useYouTubePlayer'
 import { type AmbientChannel, ambient } from '../lib/ambient'
 import {
-  fetchYouTubeTitle,
-  formatTime,
-  parseYouTubeId,
-} from '../lib/youtube'
+  alive,
+  ensureStamps,
+  newId,
+  purgeTombstones,
+  restore,
+  softDelete,
+} from '../lib/syncable'
+import { fetchYouTubeTitle, formatTime, parseYouTubeId } from '../lib/youtube'
+import { toastUndo } from '../store/useToastStore'
+import type { YtTrack } from '../types'
 import { GlassCard } from './GlassCard'
+import {
+  GripIcon,
+  PauseIcon,
+  PlayIcon,
+  RefreshIcon,
+  RepeatIcon,
+  ShuffleIcon,
+  SkipBackIcon,
+  SkipForwardIcon,
+  TrashIcon,
+  VolumeIcon,
+} from './icons'
 
 type Mode = 'radio' | 'youtube'
 type LoopMode = 'off' | 'all' | 'one'
@@ -18,60 +54,11 @@ const LOOP_NEXT: Record<LoopMode, LoopMode> = {
   one: 'off',
 }
 
-// Icon shuffle monochrome (lucide-style).
-function ShuffleIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="h-5 w-5"
-      aria-hidden="true"
-    >
-      <path d="M16 3h5v5" />
-      <path d="M4 20 21 3" />
-      <path d="M21 16v5h-5" />
-      <path d="m15 15 6 6" />
-      <path d="M4 4l5 5" />
-    </svg>
-  )
-}
-
-// Icon loop monochrome (lucide-style "repeat") — ăn theo màu chữ, không có nền emoji.
-function LoopIcon({ one }: { one: boolean }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="h-5 w-5"
-      aria-hidden="true"
-    >
-      <path d="m17 2 4 4-4 4" />
-      <path d="M3 11v-1a4 4 0 0 1 4-4h14" />
-      <path d="m7 22-4-4 4-4" />
-      <path d="M21 13v1a4 4 0 0 1-4 4H3" />
-      {one && <path d="M11 10h1v4" />}
-    </svg>
-  )
-}
-
 interface Station {
   id: string
   name: string
-  desc: string
+  descKey: string
   url: string
-}
-
-interface YtTrack {
-  id: string
-  title: string
 }
 
 const AMBIENT: { id: AmbientChannel; icon: string }[] = [
@@ -86,56 +73,209 @@ const STATIONS: Station[] = [
   {
     id: 'groovesalad',
     name: 'Groove Salad',
-    desc: 'Ambient / downtempo chill',
+    descKey: 'lofi.descGroove',
     url: 'https://ice1.somafm.com/groovesalad-128-mp3',
   },
   {
     id: 'dronezone',
     name: 'Drone Zone',
-    desc: 'Atmospheric space music',
+    descKey: 'lofi.descDrone',
     url: 'https://ice1.somafm.com/dronezone-128-mp3',
   },
   {
     id: 'lush',
     name: 'Lush',
-    desc: 'Sensuous vocals, chill beats',
+    descKey: 'lofi.descLush',
     url: 'https://ice1.somafm.com/lush-128-mp3',
   },
   {
     id: 'fluid',
     name: 'Fluid',
-    desc: 'Lo-fi hip-hop / future soul',
+    descKey: 'lofi.descFluid',
     url: 'https://ice1.somafm.com/fluid-128-mp3',
   },
 ]
 
+/** Chuẩn hoá playlist của bản cũ (`{id: videoId, title: string}`). */
+function normalizeTracks(list: YtTrack[]): YtTrack[] {
+  return list.map((tk) => {
+    const videoId = tk.videoId ?? tk.id
+    const title = tk.title === videoId ? null : (tk.title ?? null)
+    return tk.videoId === videoId && tk.title === title
+      ? tk
+      : { ...tk, videoId, title }
+  })
+}
+
+function TrackRow({
+  track,
+  index,
+  total,
+  isCurrent,
+  isPlaying,
+  onPlay,
+  onRemove,
+  onMove,
+  onRetryTitle,
+}: {
+  track: YtTrack
+  index: number
+  total: number
+  isCurrent: boolean
+  isPlaying: boolean
+  onPlay: () => void
+  onRemove: () => void
+  onMove: (delta: number) => void
+  onRetryTitle: () => void
+}) {
+  const { t } = useI18n()
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: track.id })
+
+  return (
+    <li
+      ref={setNodeRef}
+      data-track-id={track.id}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={
+        'group flex items-center gap-1.5 rounded-lg px-1.5 py-1.5 text-sm transition ' +
+        (isDragging ? 'relative z-10 opacity-70 ' : '') +
+        (isCurrent
+          ? 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-200'
+          : 'text-slate-700 hover:bg-black/[0.04] dark:text-slate-300 dark:hover:bg-white/[0.06]')
+      }
+    >
+      <button
+        {...attributes}
+        {...listeners}
+        aria-label={t('lofi.drag')}
+        title={t('lofi.drag')}
+        className="reveal icon-btn h-6 w-5 cursor-grab touch-none active:cursor-grabbing"
+      >
+        <GripIcon className="h-3.5 w-3.5" />
+      </button>
+      <img
+        src={`https://i.ytimg.com/vi/${track.videoId}/default.jpg`}
+        alt=""
+        loading="lazy"
+        className="h-7 w-10 flex-none rounded object-cover"
+      />
+      <button
+        onClick={onPlay}
+        className="min-w-0 flex-1 truncate text-left"
+        title={track.title ?? track.videoId}
+      >
+        {isCurrent && isPlaying ? '♫ ' : `${index + 1}. `}
+        {/* Lấy tiêu đề thất bại thì hiện chính videoId, KHÔNG treo mãi ở
+            "đang lấy tiêu đề…" như bản trước. */}
+        {track.title ?? track.videoId}
+      </button>
+      {track.title === null && (
+        <button
+          onClick={onRetryTitle}
+          aria-label={t('lofi.retryTitle')}
+          title={t('lofi.titleFailed')}
+          className="reveal icon-btn h-6 w-6"
+        >
+          <RefreshIcon className="h-3.5 w-3.5" />
+        </button>
+      )}
+      {/* Sắp xếp bằng nút — cần cho bàn phím và cho cảm ứng khi kéo khó. */}
+      <button
+        onClick={() => onMove(-1)}
+        disabled={index === 0}
+        aria-label={t('lofi.moveUp')}
+        className="reveal icon-btn h-6 w-5 disabled:opacity-20"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
+          strokeLinecap="round"
+          className="h-3 w-3"
+          aria-hidden="true"
+        >
+          <path d="m6 14 6-6 6 6" />
+        </svg>
+      </button>
+      <button
+        onClick={() => onMove(1)}
+        disabled={index === total - 1}
+        aria-label={t('lofi.moveDown')}
+        className="reveal icon-btn h-6 w-5 disabled:opacity-20"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
+          strokeLinecap="round"
+          className="h-3 w-3"
+          aria-hidden="true"
+        >
+          <path d="m6 10 6 6 6-6" />
+        </svg>
+      </button>
+      <button
+        onClick={onRemove}
+        aria-label={t('lofi.remove')}
+        className="reveal icon-btn h-6 w-6 hover:text-rose-500"
+      >
+        <TrashIcon className="h-3.5 w-3.5" />
+      </button>
+    </li>
+  )
+}
+
 export function LofiPlayer() {
   const { t } = useI18n()
   const [mode, setMode] = useLocalStorage<Mode>('dashboard.lofiMode', 'radio')
-  const [volume, setVolume] = useState(0.6)
+  const [volume, setVolume] = useLocalStorage<number>('dashboard.lofiVolume', 0.6)
   const [ambientVol, setAmbientVol] = useLocalStorage<
     Record<AmbientChannel, number>
   >('dashboard.ambient', { rain: 0, waves: 0, fire: 0, wind: 0 })
+  const [ambientBlocked, setAmbientBlocked] = useState(false)
+
+  // Khôi phục âm lượng nền đã lưu ngay khi mount. AudioContext có thể vẫn ở
+  // trạng thái suspended (chưa có tương tác) -> hiện nút bật lại thay vì im lặng.
+  useEffect(() => {
+    const wanted = Object.values(ambientVol).some((v) => v > 0)
+    if (!wanted) return
+    ambient.applyAll(ambientVol)
+    const id = window.setTimeout(() => setAmbientBlocked(ambient.suspended), 250)
+    return () => clearTimeout(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const changeAmbient = (id: AmbientChannel, v: number) => {
     ambient.setVolume(id, v)
     setAmbientVol((prev) => ({ ...prev, [id]: v }))
+    setAmbientBlocked(false)
+  }
+
+  const resumeAmbient = () => {
+    ambient.applyAll(ambientVol)
+    setAmbientBlocked(false)
   }
 
   // ----- Radio (SomaFM) -----
   const audioRef = useRef<HTMLAudioElement>(null)
-  const [stationId, setStationId] = useState(STATIONS[0].id)
+  const [stationId, setStationId] = useLocalStorage<string>(
+    'dashboard.lofiStation',
+    STATIONS[0].id,
+  )
   const [radioPlaying, setRadioPlaying] = useState(false)
   const [radioLoading, setRadioLoading] = useState(false)
   const [radioError, setRadioError] = useState(false)
-  const station = STATIONS.find((s) => s.id === stationId)!
+  const station = STATIONS.find((s) => s.id === stationId) ?? STATIONS[0]
 
   // ----- YouTube -----
-  const [playlist, setPlaylist] = useLocalStorage<YtTrack[]>(
+  const [stored, setStored] = useLocalStorage<YtTrack[]>(
     'dashboard.ytPlaylist',
     [],
   )
-  const [current, setCurrent] = useState(-1)
+  const [currentId, setCurrentId] = useState<string | null>(null)
   const [link, setLink] = useState('')
   const [linkError, setLinkError] = useState(false)
   const [loopMode, setLoopMode] = useLocalStorage<LoopMode>(
@@ -146,64 +286,86 @@ export function LofiPlayer() {
     'dashboard.lofiShuffle',
     false,
   )
-  const [dragIndex, setDragIndex] = useState<number | null>(null)
-  const activeTrackRef = useRef<HTMLLIElement>(null)
+  useEffect(() => {
+    setStored((prev) => {
+      const next = normalizeTracks(ensureStamps(purgeTombstones(prev)))
+      return next.length === prev.length &&
+        next.every((item, i) => item === prev[i])
+        ? prev
+        : next
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const playlist = useMemo(() => alive(stored), [stored])
   const playlistRef = useRef(playlist)
   playlistRef.current = playlist
-  const currentRef = useRef(current)
-  currentRef.current = current
+  const currentIdRef = useRef(currentId)
+  currentIdRef.current = currentId
   const loopRef = useRef(loopMode)
   loopRef.current = loopMode
   const shuffleRef = useRef(shuffle)
   shuffleRef.current = shuffle
 
+  const currentIndex = currentId
+    ? playlist.findIndex((tk) => tk.id === currentId)
+    : -1
+
   // Chọn bài kế: ngẫu nhiên nếu bật shuffle, ngược lại tuần tự (lặp vòng).
-  const pickNext = () => {
+  const pickNext = (): YtTrack | null => {
     const list = playlistRef.current
-    if (!list.length) return -1
+    if (!list.length) return null
+    const at = list.findIndex((tk) => tk.id === currentIdRef.current)
     if (shuffleRef.current && list.length > 1) {
-      let i = currentRef.current
-      while (i === currentRef.current) i = Math.floor(Math.random() * list.length)
-      return i
+      let i = at
+      while (i === at) i = Math.floor(Math.random() * list.length)
+      return list[i]
     }
-    return (currentRef.current + 1) % list.length
+    return list[(at + 1) % list.length]
+  }
+
+  const playTrack = (track: YtTrack) => {
+    setCurrentId(track.id)
+    ytApi.load(track.videoId)
   }
 
   // ⏭ thủ công: luôn sang bài kế.
   const advance = () => {
-    const i = pickNext()
-    if (i < 0) return
-    setCurrent(i)
-    yt.load(playlistRef.current[i].id)
+    const next = pickNext()
+    if (next) playTrack(next)
   }
 
   // Khi hết bài: tuỳ chế độ lặp.
   const handleEnded = () => {
     const list = playlistRef.current
-    const cur = currentRef.current
     if (!list.length) return
-    if (loopRef.current === 'one' && cur >= 0) {
-      yt.load(list[cur].id) // phát lại bài hiện tại
+    const at = list.findIndex((tk) => tk.id === currentIdRef.current)
+    if (loopRef.current === 'one' && at >= 0) {
+      ytApi.load(list[at].videoId) // phát lại bài hiện tại
       return
     }
     // off (không shuffle) + đang ở bài cuối -> dừng
-    if (!shuffleRef.current && cur >= list.length - 1 && loopRef.current !== 'all')
+    if (!shuffleRef.current && at >= list.length - 1 && loopRef.current !== 'all')
       return
     advance()
   }
-  const yt = useYouTubePlayer(handleEnded)
+  const { containerRef, ready, playing, currentTime, duration, api: ytApi } =
+    useYouTubePlayer(handleEnded)
 
-  // Đồng bộ âm lượng cho cả 2 nguồn.
+  // Đồng bộ âm lượng cho cả 2 nguồn. `ytApi` ổn định giữa các render nên effect
+  // này chỉ chạy khi âm lượng thật sự đổi.
   useEffect(() => {
     if (audioRef.current) audioRef.current.volume = volume
-    yt.setVolume(volume)
-  }, [volume, yt.ready, yt])
+    ytApi.setVolume(volume)
+  }, [volume, ready, ytApi])
 
   // Cuộn danh sách tới bài đang phát mỗi khi đổi bài.
   useEffect(() => {
-    if (current < 0) return
-    activeTrackRef.current?.scrollIntoView({ block: 'nearest' })
-  }, [current])
+    if (!currentId) return
+    document
+      .querySelector(`[data-track-id="${currentId}"]`)
+      ?.scrollIntoView({ block: 'nearest' })
+  }, [currentId])
 
   // Đổi chế độ -> tạm dừng nguồn còn lại.
   useEffect(() => {
@@ -211,9 +373,9 @@ export function LofiPlayer() {
       audioRef.current?.pause()
       setRadioPlaying(false)
     } else {
-      yt.pause()
+      ytApi.pause()
     }
-  }, [mode]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [mode, ytApi])
 
   // ---- Radio handlers ----
   const toggleRadio = async () => {
@@ -237,86 +399,131 @@ export function LofiPlayer() {
     }
   }
 
-  const pickStation = (id: string) => {
+  const pickStation = async (id: string) => {
+    const wasPlaying = radioPlaying
     setStationId(id)
-    setRadioPlaying(false)
-    requestAnimationFrame(() => audioRef.current?.load())
+    setRadioError(false)
+    // Đang phát thì đổi đài phải phát tiếp — bản trước bắt bấm play lại.
+    await new Promise((r) => requestAnimationFrame(r))
+    const audio = audioRef.current
+    if (!audio) return
+    audio.load()
+    if (!wasPlaying) {
+      setRadioPlaying(false)
+      return
+    }
+    try {
+      setRadioLoading(true)
+      await audio.play()
+      setRadioPlaying(true)
+    } catch {
+      setRadioError(true)
+      setRadioPlaying(false)
+    } finally {
+      setRadioLoading(false)
+    }
   }
 
   // ---- YouTube handlers ----
+  const fillTitle = async (rowId: string, videoId: string) => {
+    const title = await fetchYouTubeTitle(videoId)
+    setStored((prev) =>
+      prev.map((tk) =>
+        tk.id === rowId ? { ...tk, title, updatedAt: Date.now() } : tk,
+      ),
+    )
+  }
+
   const addLink = async () => {
-    const id = parseYouTubeId(link)
-    if (!id) {
+    const videoId = parseYouTubeId(link)
+    if (!videoId) {
       setLinkError(true)
       return
     }
     setLinkError(false)
     setLink('')
-    setPlaylist((prev) => [...prev, { id, title: id }])
-    const title = await fetchYouTubeTitle(id)
-    setPlaylist((prev) =>
-      prev.map((tk) => (tk.id === id && tk.title === id ? { ...tk, title } : tk)),
-    )
-  }
-
-  const playIndex = (i: number) => {
-    setCurrent(i)
-    yt.load(playlist[i].id)
+    const rowId = newId()
+    setStored((prev) => [
+      ...prev,
+      { id: rowId, videoId, title: null, updatedAt: Date.now() },
+    ])
+    await fillTitle(rowId, videoId)
   }
 
   const togglePlay = () => {
-    if (current < 0) {
-      if (playlist.length) playIndex(0)
+    if (currentIndex < 0) {
+      if (playlist.length) playTrack(playlist[0])
       return
     }
-    if (yt.playing) yt.pause()
-    else yt.play()
+    if (playing) ytApi.pause()
+    else ytApi.play()
   }
 
   const playPrev = () => {
     if (!playlist.length) return
-    playIndex((current - 1 + playlist.length) % playlist.length)
+    const at = currentIndex < 0 ? 0 : currentIndex
+    playTrack(playlist[(at - 1 + playlist.length) % playlist.length])
   }
 
-  const removeTrack = (i: number) => {
-    setPlaylist((prev) => prev.filter((_, idx) => idx !== i))
-    if (i === current) setCurrent(-1)
-    else if (i < current) setCurrent((c) => c - 1)
-  }
-
-  // Kéo-thả: chuyển bài từ vị trí dragIndex tới vị trí `to`.
-  const dropOn = (to: number) => {
-    if (dragIndex === null || dragIndex === to) {
-      setDragIndex(null)
-      return
+  const removeTrack = (track: YtTrack) => {
+    // Xoá bài ĐANG phát thì phải dừng hẳn; bản trước chỉ bỏ khỏi danh sách nên
+    // nhạc vẫn chạy tiếp trong khi tiêu đề hiện "—".
+    if (track.id === currentId) {
+      ytApi.stop()
+      setCurrentId(null)
     }
-    const curTrack = current >= 0 ? playlist[current] : null
-    const next = [...playlist]
-    const [moved] = next.splice(dragIndex, 1)
-    next.splice(to, 0, moved)
-    setPlaylist(next)
-    if (curTrack) setCurrent(next.indexOf(curTrack)) // giữ đúng bài đang phát
-    setDragIndex(null)
+    setStored((prev) => softDelete(prev, track.id))
+    toastUndo(t('lofi.deleted'), t('common.undo'), () =>
+      setStored((prev) => restore(prev, track.id)),
+    )
   }
 
-  const nowPlaying = current >= 0 ? playlist[current] : null
+  const reorder = (from: number, to: number) => {
+    if (to < 0 || to >= playlist.length || from === to) return
+    const reordered = arrayMove(playlist, from, to)
+    setStored((prev) => [...reordered, ...prev.filter((tk) => tk.deletedAt)])
+  }
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 150, tolerance: 6 },
+    }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
+
+  const onDragEnd = ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return
+    reorder(
+      playlist.findIndex((tk) => tk.id === active.id),
+      playlist.findIndex((tk) => tk.id === over.id),
+    )
+  }
+
+  const nowPlaying = currentIndex >= 0 ? playlist[currentIndex] : null
+  const loopLabel = t(
+    loopMode === 'off'
+      ? 'lofi.loopOff'
+      : loopMode === 'all'
+        ? 'lofi.loopAll'
+        : 'lofi.loopOne',
+  )
 
   return (
-    <GlassCard glow="hover:shadow-amber-500/20" className="flex flex-col">
+    <GlassCard className="flex flex-col">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-200/70">
-          {t('lofi.title')}
-        </h2>
+        <h2 className="card-title">{t('lofi.title')}</h2>
         <div className="flex gap-1 rounded-full bg-black/5 p-0.5 text-xs dark:bg-white/5">
           {(['radio', 'youtube'] as Mode[]).map((m) => (
             <button
               key={m}
               onClick={() => setMode(m)}
+              aria-pressed={mode === m}
               className={
                 'rounded-full px-3 py-1 font-medium transition ' +
                 (mode === m
                   ? 'bg-white text-slate-900 shadow-sm dark:bg-white/15 dark:text-white'
-                  : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white')
+                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white')
               }
             >
               {m === 'radio' ? t('lofi.tabDefault') : t('lofi.tabYoutube')}
@@ -325,37 +532,50 @@ export function LofiPlayer() {
         </div>
       </div>
 
-      {/* ---------------- Radio panel ---------------- */}
-      <div className={mode === 'radio' ? 'mt-3' : 'hidden'}>
+      {/* ---------------- Radio panel ----------------
+          Giới hạn bề rộng: card này rộng 2–3 cột nên nếu để tràn, 4 nút chọn đài
+          bị kéo thành pill 250px và slider âm lượng dài gần cả card. */}
+      <div className={mode === 'radio' ? 'mt-3 max-w-xl' : 'hidden'}>
         <div className="flex items-center gap-4">
           <button
             onClick={toggleRadio}
-            className="flex h-14 w-14 flex-none items-center justify-center rounded-full bg-amber-500/90 text-2xl text-white shadow-lg shadow-amber-500/30 transition hover:bg-amber-500"
+            className="flex h-14 w-14 flex-none items-center justify-center rounded-full bg-indigo-500 text-white shadow-lg shadow-indigo-500/30 transition hover:bg-indigo-400"
             aria-label={radioPlaying ? t('lofi.pause') : t('lofi.play')}
           >
-            {radioLoading ? '…' : radioPlaying ? '⏸' : '▶'}
+            {radioLoading ? (
+              <span className="text-lg">…</span>
+            ) : radioPlaying ? (
+              <PauseIcon className="h-6 w-6" />
+            ) : (
+              <PlayIcon className="h-6 w-6 translate-x-px" />
+            )}
           </button>
           <div className="min-w-0">
             <div className="truncate text-base font-semibold text-slate-900 dark:text-white">
               {station.name}
             </div>
-            <div className="truncate text-sm text-slate-500 dark:text-slate-400">
+            <div className="truncate text-sm muted">
               {radioPlaying ? '♫ ' : ''}
-              {station.desc}
+              {t(station.descKey)}
             </div>
           </div>
         </div>
 
-        <div className="mt-3 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+        <div
+          className="mt-3 grid max-w-lg grid-cols-2 gap-1.5 sm:grid-cols-4"
+          role="group"
+          aria-label={t('lofi.station')}
+        >
           {STATIONS.map((s) => (
             <button
               key={s.id}
               onClick={() => pickStation(s.id)}
+              aria-pressed={s.id === stationId}
               className={
                 'rounded-lg px-2 py-1.5 text-xs font-medium transition ' +
                 (s.id === stationId
-                  ? 'bg-amber-500/20 text-amber-700 dark:text-amber-200'
-                  : 'bg-black/5 text-slate-600 hover:bg-black/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10')
+                  ? 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-200'
+                  : 'bg-black/[0.05] text-slate-700 hover:bg-black/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10')
               }
             >
               {s.name}
@@ -364,7 +584,7 @@ export function LofiPlayer() {
         </div>
 
         {radioError && (
-          <p className="mt-2 text-xs text-rose-500 dark:text-rose-300/80">
+          <p role="alert" className="mt-2 text-xs text-rose-600 dark:text-rose-300">
             {t('lofi.error')}
           </p>
         )}
@@ -381,175 +601,156 @@ export function LofiPlayer() {
         {/* Cột trái: video + điều khiển */}
         <div>
           <div className="aspect-video w-full overflow-hidden rounded-xl bg-black/40">
-            <div ref={yt.containerRef} className="h-full w-full" />
+            <div ref={containerRef} className="h-full w-full" />
           </div>
 
-        <div className="mt-2 truncate text-sm font-semibold text-slate-900 dark:text-white">
-          {nowPlaying ? nowPlaying.title : '—'}
-        </div>
+          <div className="mt-2 truncate text-sm font-semibold text-slate-900 dark:text-white">
+            {nowPlaying ? (nowPlaying.title ?? nowPlaying.videoId) : '—'}
+          </div>
 
-        {/* Thanh tua */}
-        <div className="mt-2 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-          <span className="tabular-nums">{formatTime(yt.currentTime)}</span>
-          <input
-            type="range"
-            min={0}
-            max={yt.duration || 0}
-            step={1}
-            value={Math.min(yt.currentTime, yt.duration || 0)}
-            onChange={(e) => yt.seek(+e.target.value)}
-            disabled={current < 0 || !yt.duration}
-            className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-black/10 accent-amber-500 disabled:opacity-40 dark:bg-white/15"
-            aria-label={t('lofi.title')}
-          />
-          <span className="tabular-nums">{formatTime(yt.duration)}</span>
-        </div>
+          {/* Thanh tua */}
+          <div className="mt-2 flex items-center gap-2 text-xs tabular-nums text-slate-600 dark:text-slate-400">
+            <span>{formatTime(currentTime)}</span>
+            <input
+              type="range"
+              min={0}
+              max={duration || 0}
+              step={1}
+              value={Math.min(currentTime, duration || 0)}
+              onChange={(e) => ytApi.seek(+e.target.value)}
+              disabled={currentIndex < 0 || !duration}
+              className="h-2 flex-1 cursor-pointer appearance-none rounded-full bg-black/10 accent-indigo-500 disabled:opacity-40 dark:bg-white/15"
+              aria-label={t('lofi.seek')}
+            />
+            <span>{formatTime(duration)}</span>
+          </div>
 
-        {/* Điều khiển */}
-        <div className="mt-2 flex items-center justify-center gap-3">
-          <button
-            onClick={() => setShuffle((s) => !s)}
-            className={
-              'mr-1 flex h-9 w-9 items-center justify-center rounded-full transition ' +
-              (shuffle
-                ? 'text-amber-500'
-                : 'text-slate-400 opacity-50 hover:opacity-80 dark:text-slate-500')
-            }
-            aria-label={t('lofi.shuffle')}
-            title={t('lofi.shuffle')}
-          >
-            <ShuffleIcon />
-          </button>
-          <button
-            onClick={playPrev}
-            disabled={!playlist.length}
-            className="text-2xl text-slate-600 transition hover:text-amber-500 disabled:opacity-30 dark:text-slate-300"
-            aria-label={t('lofi.prev')}
-          >
-            ⏮
-          </button>
-          <button
-            onClick={togglePlay}
-            disabled={!playlist.length}
-            className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/90 text-xl text-white shadow-lg shadow-amber-500/30 transition hover:bg-amber-500 disabled:opacity-40"
-            aria-label={yt.playing ? t('lofi.pause') : t('lofi.play')}
-          >
-            {yt.playing ? '⏸' : '▶'}
-          </button>
-          <button
-            onClick={advance}
-            disabled={!playlist.length}
-            className="text-2xl text-slate-600 transition hover:text-amber-500 disabled:opacity-30 dark:text-slate-300"
-            aria-label={t('lofi.next')}
-          >
-            ⏭
-          </button>
-          <button
-            onClick={() => setLoopMode(LOOP_NEXT[loopMode])}
-            className={
-              'ml-1 flex h-9 w-9 items-center justify-center rounded-full transition ' +
-              (loopMode === 'off'
-                ? 'text-slate-400 opacity-50 hover:opacity-80 dark:text-slate-500'
-                : 'text-amber-500')
-            }
-            aria-label={t(`lofi.loop${loopMode === 'off' ? 'Off' : loopMode === 'all' ? 'All' : 'One'}`)}
-            title={t(`lofi.loop${loopMode === 'off' ? 'Off' : loopMode === 'all' ? 'All' : 'One'}`)}
-          >
-            <LoopIcon one={loopMode === 'one'} />
-          </button>
+          {/* Điều khiển */}
+          <div className="mt-2 flex items-center justify-center gap-2">
+            <button
+              onClick={() => setShuffle((s) => !s)}
+              aria-pressed={shuffle}
+              aria-label={t('lofi.shuffle')}
+              title={t('lofi.shuffle')}
+              className={
+                'icon-btn ' + (shuffle ? 'text-indigo-500 dark:text-indigo-300' : '')
+              }
+            >
+              <ShuffleIcon className="h-4 w-4" />
+            </button>
+            <button
+              onClick={playPrev}
+              disabled={!playlist.length}
+              aria-label={t('lofi.prev')}
+              className="icon-btn disabled:opacity-30"
+            >
+              <SkipBackIcon className="h-5 w-5" />
+            </button>
+            <button
+              onClick={togglePlay}
+              disabled={!playlist.length}
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-500 text-white shadow-lg shadow-indigo-500/30 transition hover:bg-indigo-400 disabled:opacity-40"
+              aria-label={playing ? t('lofi.pause') : t('lofi.play')}
+            >
+              {playing ? (
+                <PauseIcon className="h-5 w-5" />
+              ) : (
+                <PlayIcon className="h-5 w-5 translate-x-px" />
+              )}
+            </button>
+            <button
+              onClick={advance}
+              disabled={!playlist.length}
+              aria-label={t('lofi.next')}
+              className="icon-btn disabled:opacity-30"
+            >
+              <SkipForwardIcon className="h-5 w-5" />
+            </button>
+            <button
+              onClick={() => setLoopMode(LOOP_NEXT[loopMode])}
+              aria-label={loopLabel}
+              title={loopLabel}
+              className={
+                'icon-btn ' +
+                (loopMode !== 'off' ? 'text-indigo-500 dark:text-indigo-300' : '')
+              }
+            >
+              <RepeatIcon one={loopMode === 'one'} className="h-4 w-4" />
+            </button>
           </div>
         </div>
 
         {/* Cột phải: thêm link + playlist */}
         <div className="mt-3 flex flex-col md:mt-0">
-        {/* Thêm link */}
-        <div className="flex gap-2">
-          <input
-            value={link}
-            onChange={(e) => {
-              setLink(e.target.value)
-              setLinkError(false)
-            }}
-            onKeyDown={(e) => e.key === 'Enter' && addLink()}
-            placeholder={t('lofi.ytPlaceholder')}
-            className="min-w-0 flex-1 rounded-lg border border-black/10 bg-black/5 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500 outline-none focus:border-amber-400/60 dark:border-white/10 dark:bg-white/5 dark:text-white"
-          />
-          <button
-            onClick={addLink}
-            className="rounded-lg bg-amber-500/90 px-3 py-2 text-sm font-medium text-white transition hover:bg-amber-500"
-          >
-            {t('lofi.add')}
-          </button>
-        </div>
-        {linkError && (
-          <p className="mt-1 text-xs text-rose-500 dark:text-rose-300/80">
-            {t('lofi.invalidLink')}
-          </p>
-        )}
-
-        {/* Playlist */}
-        <ul className="scroll-thin mt-3 max-h-40 flex-1 space-y-1 overflow-y-auto pr-1 md:max-h-72">
-          {playlist.length === 0 && (
-            <li className="py-4 text-center text-xs text-slate-500">
-              {t('lofi.emptyList')}
-            </li>
+          <div className="flex gap-2">
+            <input
+              value={link}
+              onChange={(e) => {
+                setLink(e.target.value)
+                setLinkError(false)
+              }}
+              onKeyDown={(e) => e.key === 'Enter' && addLink()}
+              placeholder={t('lofi.ytPlaceholder')}
+              className="field flex-1"
+            />
+            <button onClick={addLink} className="btn-primary">
+              {t('lofi.add')}
+            </button>
+          </div>
+          {linkError && (
+            <p role="alert" className="mt-1 text-xs text-rose-600 dark:text-rose-300">
+              {t('lofi.invalidLink')}
+            </p>
           )}
-          {playlist.map((tk, i) => (
-            <li
-              key={tk.id + i}
-              ref={i === current ? activeTrackRef : undefined}
-              draggable
-              onDragStart={() => setDragIndex(i)}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={() => dropOn(i)}
-              onDragEnd={() => setDragIndex(null)}
-              className={
-                'group flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm transition ' +
-                (dragIndex === i ? 'opacity-40 ' : '') +
-                (i === current
-                  ? 'bg-amber-500/15 text-amber-700 dark:text-amber-200'
-                  : 'text-slate-600 hover:bg-black/5 dark:text-slate-300 dark:hover:bg-white/5')
-              }
+
+          {playlist.length === 0 ? (
+            <div className="empty-state">
+              <p className="text-sm muted">{t('lofi.emptyList')}</p>
+            </div>
+          ) : (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={onDragEnd}
             >
-              <span
-                className="flex-none cursor-grab select-none text-slate-400 active:cursor-grabbing dark:text-slate-500"
-                title={t('lofi.drag')}
-                aria-hidden="true"
+              <SortableContext
+                items={playlist.map((tk) => tk.id)}
+                strategy={verticalListSortingStrategy}
               >
-                ⠿
-              </span>
-              <img
-                src={`https://i.ytimg.com/vi/${tk.id}/default.jpg`}
-                alt=""
-                loading="lazy"
-                className="h-7 w-10 flex-none rounded object-cover"
-              />
-              <button
-                onClick={() => playIndex(i)}
-                className="min-w-0 flex-1 truncate text-left"
-                title={tk.title}
-              >
-                {i === current && yt.playing ? '♫ ' : `${i + 1}. `}
-                {tk.title === tk.id ? t('lofi.loadingTitle') : tk.title}
-              </button>
-              <button
-                onClick={() => removeTrack(i)}
-                className="flex-none text-slate-400 opacity-0 transition hover:text-rose-400 group-hover:opacity-100"
-                aria-label={t('lofi.remove')}
-              >
-                ✕
-              </button>
-            </li>
-          ))}
-        </ul>
+                <ul className="scroll-thin mt-3 max-h-56 flex-1 space-y-0.5 overflow-y-auto pr-1 md:max-h-72">
+                  {playlist.map((tk, i) => (
+                    <TrackRow
+                      key={tk.id}
+                      track={tk}
+                      index={i}
+                      total={playlist.length}
+                      isCurrent={tk.id === currentId}
+                      isPlaying={playing}
+                      onPlay={() => playTrack(tk)}
+                      onRemove={() => removeTrack(tk)}
+                      onMove={(delta) => reorder(i, i + delta)}
+                      onRetryTitle={() => fillTitle(tk.id, tk.videoId)}
+                    />
+                  ))}
+                </ul>
+              </SortableContext>
+            </DndContext>
+          )}
         </div>
       </div>
 
       {/* Âm thanh nền (trộn chồng lên nhạc) */}
-      <div className="mt-3 border-t border-black/10 pt-3 dark:border-white/10">
-        <p className="mb-2 text-xs font-medium text-slate-500 dark:text-slate-400">
-          {t('lofi.ambient')}
-        </p>
+      <div className="divider-t mt-3 max-w-2xl pt-3">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
+            {t('lofi.ambient')}
+          </p>
+          {ambientBlocked && (
+            <button onClick={resumeAmbient} className="btn-ghost px-2 py-1 text-xs">
+              {t('lofi.enableAmbient')}
+            </button>
+          )}
+        </div>
         <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
           {AMBIENT.map(({ id, icon }) => (
             <label key={id} className="flex items-center gap-2">
@@ -558,6 +759,7 @@ export function LofiPlayer() {
                   'text-base transition ' +
                   (ambientVol[id] > 0 ? '' : 'opacity-40 grayscale')
                 }
+                aria-hidden="true"
               >
                 {icon}
               </span>
@@ -566,9 +768,9 @@ export function LofiPlayer() {
                 min={0}
                 max={1}
                 step={0.01}
-                value={ambientVol[id]}
+                value={ambientVol[id] ?? 0}
                 onChange={(e) => changeAmbient(id, +e.target.value)}
-                className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-black/10 accent-amber-500 dark:bg-white/15"
+                className="h-2 flex-1 cursor-pointer appearance-none rounded-full bg-black/10 accent-indigo-500 dark:bg-white/15"
                 aria-label={t(`lofi.${id}`)}
                 title={t(`lofi.${id}`)}
               />
@@ -578,8 +780,8 @@ export function LofiPlayer() {
       </div>
 
       {/* Âm lượng dùng chung */}
-      <div className="mt-3 flex items-center gap-2 border-t border-black/10 pt-3 dark:border-white/10">
-        <span className="text-sm">🔈</span>
+      <div className="divider-t mt-3 flex max-w-xs items-center gap-2 pt-3">
+        <VolumeIcon className="h-4 w-4 flex-none text-slate-600 dark:text-slate-400" />
         <input
           type="range"
           min={0}
@@ -587,7 +789,7 @@ export function LofiPlayer() {
           step={0.01}
           value={volume}
           onChange={(e) => setVolume(+e.target.value)}
-          className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-black/10 accent-amber-500 dark:bg-white/15"
+          className="h-2 flex-1 cursor-pointer appearance-none rounded-full bg-black/10 accent-indigo-500 dark:bg-white/15"
           aria-label={t('lofi.volume')}
         />
       </div>

@@ -31,8 +31,16 @@ export function parseYouTubeId(input: string): string | null {
   return null
 }
 
-// Lấy tiêu đề video (oEmbed có CORS). Lỗi thì trả về chính videoId.
-export async function fetchYouTubeTitle(videoId: string): Promise<string> {
+/**
+ * Lấy tiêu đề video (oEmbed có CORS). Trả về `null` khi thất bại.
+ *
+ * Bản trước trả về chính `videoId` khi lỗi, mà UI lại coi "title === videoId"
+ * là dấu hiệu ĐANG TẢI — nên một lần fetch lỗi làm item treo ở nhãn
+ * "đang lấy tiêu đề…" vĩnh viễn, kể cả sau khi reload.
+ */
+export async function fetchYouTubeTitle(
+  videoId: string,
+): Promise<string | null> {
   try {
     const res = await fetch(
       `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`,
@@ -42,9 +50,9 @@ export async function fetchYouTubeTitle(videoId: string): Promise<string> {
       if (json.title) return json.title
     }
   } catch {
-    // bỏ qua -> dùng videoId
+    /* ignore */
   }
-  return videoId
+  return null
 }
 
 export function formatTime(seconds: number): string {

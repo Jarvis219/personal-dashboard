@@ -26,20 +26,24 @@ export const WIDGETS: Record<string, ComponentType> = {
 export type WidgetId = keyof typeof WIDGETS
 
 // Widget chiếm 2 cột trên desktop (1 cột trên mobile).
+// KHÔNG dùng col-span-3: chiếm trọn một hàng của grid 3 cột thì ô thứ ba của
+// hàng trước bị bỏ trống, tạo ra khoảng không chết giữa trang.
 export const WIDE_WIDGETS = new Set<WidgetId>(['lofi'])
 
 // Thứ tự mặc định + dùng làm nguồn danh sách đầy đủ.
+// `stats` đứng trước `lofi` để hàng thứ hai đủ 3 ô, rồi lofi (2 cột) + notes
+// lấp kín hàng kế tiếp — không còn ô trống nào ở nửa dưới trang.
 export const WIDGET_IDS: WidgetId[] = [
   'clock',
   'weather',
   'todo',
   'pomodoro',
   'calendar',
+  'stats',
   'lofi',
   'notes',
   'habits',
   'bookmarks',
-  'stats',
 ]
 
 // Emoji nhãn hiển thị trong menu ẩn/hiện. Tên hiển thị lấy từ i18n key `widget.<id>`.

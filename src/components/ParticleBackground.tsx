@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { useReducedMotion } from '../hooks/useReducedMotion'
 import type { ThemeMode } from '../theme/themes'
 
 interface Particle {
@@ -18,8 +19,10 @@ export function ParticleBackground({ mode }: { mode: ThemeMode }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const modeRef = useRef(mode)
   modeRef.current = mode
+  const reduced = useReducedMotion()
 
   useEffect(() => {
+    if (reduced) return // tôn trọng prefers-reduced-motion: không chạy rAF nào
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
@@ -103,11 +106,26 @@ export function ParticleBackground({ mode }: { mode: ThemeMode }) {
     draw()
     window.addEventListener('resize', resize)
 
+    // Tab ẩn -> dừng hẳn vòng vẽ. Trước đây canvas này (60 hạt + tính khoảng
+    // cách O(n²)) chạy 100% thời gian, kể cả khi không ai xem, ăn pin laptop.
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        cancelAnimationFrame(raf)
+        raf = 0
+      } else if (!raf) {
+        draw()
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+
     return () => {
       cancelAnimationFrame(raf)
       window.removeEventListener('resize', resize)
+      document.removeEventListener('visibilitychange', onVisibility)
     }
-  }, [])
+  }, [reduced])
+
+  if (reduced) return null
 
   return (
     <canvas

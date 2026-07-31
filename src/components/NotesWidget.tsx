@@ -7,20 +7,20 @@ export function NotesWidget() {
   const [text, setText] = useLocalStorage<string>('dashboard.notes', '')
 
   return (
-    <GlassCard glow="hover:shadow-yellow-500/20" className="flex flex-col">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-yellow-600 dark:text-yellow-200/70">
-          {t('notes.title')}
-        </h2>
-        <span className="text-xs text-slate-400 dark:text-slate-500">
-          {text.length}
-        </span>
+    <GlassCard className="flex flex-col">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="card-title">{t('notes.title')}</h2>
+        {text.length > 0 && (
+          <span className="text-[11px] tabular-nums text-slate-600 dark:text-slate-400">
+            {t('notes.chars', { n: text.length })}
+          </span>
+        )}
       </div>
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder={t('notes.placeholder')}
-        className="scroll-thin mt-3 min-h-40 flex-1 resize-none rounded-lg border border-black/10 bg-black/5 p-3 text-sm leading-relaxed text-slate-800 placeholder:text-slate-500 outline-none focus:border-yellow-400/60 dark:border-white/10 dark:bg-white/5 dark:text-slate-100"
+        className="field scroll-thin mt-3 min-h-40 flex-1 resize-none p-3 leading-relaxed"
       />
     </GlassCard>
   )

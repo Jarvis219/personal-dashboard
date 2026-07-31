@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { useReducedMotion } from '../hooks/useReducedMotion'
 import { useWeatherStore } from '../store/useWeatherStore'
 
 // Lớp phủ canvas vẽ hiệu ứng bầu trời theo thời tiết: nắng / đêm sao /
@@ -6,9 +7,10 @@ import { useWeatherStore } from '../store/useWeatherStore'
 export function WeatherEffects() {
   const sky = useWeatherStore((s) => s.sky)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const reduced = useReducedMotion()
 
   useEffect(() => {
-    if (sky === 'none') return
+    if (sky === 'none' || reduced) return
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
@@ -45,12 +47,16 @@ export function WeatherEffects() {
         }))
       }
       if (sky === 'cloudy') {
+        // Giữ mây ở dải trên và làm nhạt hẳn. Trước đây mây rải tới 48% chiều
+        // cao với opacity tới 0.24, và vì canvas nằm z-0 SAU các card trong mờ
+        // nên nó hiện thành vệt xám nhoè BÊN TRONG card Đồng hồ / Pomodoro —
+        // trông như lỗi render chứ không phải hiệu ứng.
         clouds = Array.from({ length: 6 }, () => ({
           x: Math.random() * w,
-          y: h * (0.08 + Math.random() * 0.4),
+          y: h * (0.02 + Math.random() * 0.16),
           s: 0.6 + Math.random() * 0.9,
           v: 0.15 + Math.random() * 0.25,
-          o: 0.12 + Math.random() * 0.12,
+          o: 0.06 + Math.random() * 0.06,
         }))
       }
     }
@@ -184,16 +190,40 @@ export function WeatherEffects() {
     resize()
     draw()
     window.addEventListener('resize', resize)
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        cancelAnimationFrame(raf)
+        raf = 0
+      } else if (!raf) {
+        draw()
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+
     return () => {
       cancelAnimationFrame(raf)
       window.removeEventListener('resize', resize)
+      document.removeEventListener('visibilitychange', onVisibility)
     }
-  }, [sky])
+  }, [sky, reduced])
 
-  if (sky === 'none') return null
+  if (sky === 'none' || reduced) return null
   return (
     <canvas
       ref={canvasRef}
+      // Chỉ mask cho mây: mây phải ở dải trên để không lấn vào vùng card. Mưa và
+      // tuyết thì cần rơi hết chiều cao mới đúng.
+      style={
+        sky === 'cloudy'
+          ? {
+              maskImage:
+                'linear-gradient(to bottom, black 0%, transparent 55%)',
+              WebkitMaskImage:
+                'linear-gradient(to bottom, black 0%, transparent 55%)',
+            }
+          : undefined
+      }
       className="pointer-events-none fixed inset-0 z-0"
       aria-hidden="true"
     />

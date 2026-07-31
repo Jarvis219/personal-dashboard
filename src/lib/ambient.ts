@@ -105,13 +105,32 @@ class AmbientMixer {
 
   setVolume(name: AmbientChannel, v: number) {
     this.ensure()
-    this.ctx!.resume()
+    void this.ctx!.resume().catch(() => {})
     let ch = this.channels.get(name)
     if (!ch) {
       ch = this.build(name)
       this.channels.set(name, ch)
     }
     ch.gain.gain.setTargetAtTime(v, this.ctx!.currentTime, 0.05)
+  }
+
+  /** AudioContext chưa chạy (chưa có tương tác của người dùng, hoặc bị chặn). */
+  get suspended(): boolean {
+    return !this.ctx || this.ctx.state === 'suspended'
+  }
+
+  /**
+   * Áp lại toàn bộ âm lượng đã lưu.
+   *
+   * Bản trước chỉ gọi `setVolume` từ sự kiện kéo slider, nên sau khi tải lại
+   * trang các slider hiện đúng vị trí đã lưu mà không có tiếng nào — UI và âm
+   * thanh nói hai chuyện khác nhau.
+   */
+  applyAll(volumes: Partial<Record<AmbientChannel, number>>) {
+    for (const [name, v] of Object.entries(volumes)) {
+      if (typeof v === 'number' && v > 0)
+        this.setVolume(name as AmbientChannel, v)
+    }
   }
 }
 

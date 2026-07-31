@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Lang } from '../i18n/translations'
 import { LANGUAGES, useI18n, useLangStore } from '../i18n/useI18n'
+import { CheckIcon, ChevronDownIcon } from './icons'
 
 export function LanguageSelect() {
   const { t, lang } = useI18n()
@@ -37,7 +38,8 @@ export function LanguageSelect() {
       <button
         onClick={() => setOpen((o) => !o)}
         aria-label={t('lang.aria')}
-        aria-haspopup="listbox"
+        aria-haspopup="menu"
+        aria-controls="lang-menu"
         aria-expanded={open}
         className="glass flex h-11 items-center gap-1.5 rounded-full pl-3 pr-2.5 transition hover:scale-105"
       >
@@ -47,33 +49,27 @@ export function LanguageSelect() {
         <span className="text-sm font-bold uppercase text-slate-700 dark:text-slate-200">
           {current.code}
         </span>
-        <svg
+        <ChevronDownIcon
           className={
-            'h-4 w-4 text-slate-500 transition-transform duration-200 dark:text-slate-400 ' +
+            'h-4 w-4 text-slate-600 transition-transform duration-200 dark:text-slate-400 ' +
             (open ? 'rotate-180' : '')
           }
-          viewBox="0 0 20 20"
-          fill="currentColor"
-          aria-hidden="true"
-        >
-          <path
-            fillRule="evenodd"
-            d="M5.23 7.21a.75.75 0 011.06.02L10 11.06l3.71-3.83a.75.75 0 111.08 1.04l-4.25 4.39a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z"
-            clipRule="evenodd"
-          />
-        </svg>
+        />
       </button>
 
       {open && (
         <ul
-          role="listbox"
-          className="animate-dropdown glass absolute right-0 z-50 mt-2 w-44 origin-top-right overflow-hidden rounded-xl p-1 shadow-2xl"
+          id="lang-menu"
+          role="menu"
+          className="animate-dropdown glass-panel absolute right-0 z-50 mt-2 w-44 origin-top-right overflow-hidden rounded-xl p-1 shadow-2xl"
         >
           {LANGUAGES.map((l) => {
             const active = l.code === lang
             return (
-              <li key={l.code} role="option" aria-selected={active}>
+              <li key={l.code} role="none">
                 <button
+                  role="menuitemradio"
+                  aria-checked={active}
                   onClick={() => pick(l.code)}
                   className={
                     'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition ' +
@@ -86,7 +82,7 @@ export function LanguageSelect() {
                     {l.flag}
                   </span>
                   <span className="flex-1">{l.label}</span>
-                  {active && <span className="text-indigo-500">✓</span>}
+                  {active && <CheckIcon className="h-3.5 w-3.5 flex-none" />}
                 </button>
               </li>
             )

@@ -86,6 +86,9 @@ function loop() {
 }
 
 function burst(x: number, y: number, count = 44) {
+  // Chốt cuối cho prefers-reduced-motion: các nơi gọi cũng đã kiểm tra, nhưng
+  // hiệu ứng này chạy ngoài React nên phải tự chặn ở đây.
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
   ensureCanvas()
   for (let i = 0; i < count; i++) {
     const angle = (Math.PI * 2 * i) / count + Math.random() * 0.3

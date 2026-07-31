@@ -3,22 +3,17 @@ import type { ReactNode } from 'react'
 interface GlassCardProps {
   children: ReactNode
   className?: string
-  /** Tailwind shadow-color class for the neon glow accent on hover. */
-  glow?: string
 }
 
-export function GlassCard({
-  children,
-  className = '',
-  glow = 'hover:shadow-indigo-500/20',
-}: GlassCardProps) {
+// Vỏ card dùng chung. Không còn prop `glow` riêng cho từng widget: 10 hue accent
+// khác nhau (có 3 cặp gần trùng nhau) làm bảng màu rối mà không mang thông tin gì
+// — màu giờ chỉ dành cho dữ liệu định lượng bên trong card.
+export function GlassCard({ children, className = '' }: GlassCardProps) {
   return (
     <div
       className={
-        'glass h-full rounded-2xl p-6 shadow-xl shadow-black/10 transition-all duration-300 ' +
-        'hover:border-indigo-400/30 hover:-translate-y-0.5 dark:shadow-black/30 dark:hover:border-white/20 ' +
-        glow +
-        ' ' +
+        'glass h-full rounded-2xl p-5 transition-[transform,box-shadow] duration-300 sm:p-6 ' +
+        'hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-indigo-500/10 ' +
         className
       }
     >

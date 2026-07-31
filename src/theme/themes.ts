@@ -17,7 +17,9 @@ export const THEMES: Theme[] = [
     mode: 'dark',
     gradient:
       'linear-gradient(130deg,#020617,#0f172a,#1e1b4b,#0f172a,#020617)',
-    swatch: 'linear-gradient(135deg,#1e1b4b,#0f172a)',
+    // Sáng hơn gradient nền thật: swatch #1e1b4b→#0f172a gần như đen tuyệt đối
+    // nên ở dark mode nút chọn theme hiện ra như một vòng tròn RỖNG.
+    swatch: 'linear-gradient(135deg,#6366f1,#1e1b4b)',
   },
   {
     id: 'daylight',
@@ -73,7 +75,7 @@ export const THEMES: Theme[] = [
     mode: 'dark',
     gradient:
       'linear-gradient(130deg,#0a0a0a,#171717,#262626,#171717,#0a0a0a)',
-    swatch: 'linear-gradient(135deg,#404040,#171717)',
+    swatch: 'linear-gradient(135deg,#a3a3a3,#404040)',
   },
 ]
 

@@ -89,6 +89,9 @@ export function useYouTubePlayer(onEnded: () => void) {
     return () => clearInterval(id)
   }, [playing])
 
+  // Các hàm điều khiển giữ nguyên tham chiếu qua mọi lần render, nhờ vậy component
+  // dùng được chúng làm dependency của effect. Bản trước trả về object mới mỗi
+  // render nên effect đồng bộ âm lượng chạy lại liên tục (mỗi 500ms khi đang phát).
   const api = useMemo(
     () => ({
       load: (videoId: string) => {
@@ -98,6 +101,15 @@ export function useYouTubePlayer(onEnded: () => void) {
       },
       play: () => playerRef.current?.playVideo(),
       pause: () => playerRef.current?.pauseVideo(),
+      stop: () => {
+        try {
+          playerRef.current?.stopVideo?.()
+        } catch {
+          /* ignore */
+        }
+        setCurrentTime(0)
+        setDuration(0)
+      },
       seek: (s: number) => {
         playerRef.current?.seekTo(s, true)
         setCurrentTime(s)
@@ -108,5 +120,5 @@ export function useYouTubePlayer(onEnded: () => void) {
     [],
   )
 
-  return { containerRef, ready, playing, currentTime, duration, ...api }
+  return { containerRef, ready, playing, currentTime, duration, api }
 }

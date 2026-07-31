@@ -1,21 +1,59 @@
 import { useAuthStore } from '../auth/useAuthStore'
 import { useI18n } from '../i18n/useI18n'
 import { isSupabaseConfigured } from '../lib/supabase'
+import { useSyncStore } from '../store/useSyncStore'
+
+function SyncBadge() {
+  const { t, locale } = useI18n()
+  const { status, lastSyncedAt } = useSyncStore()
+
+  // Trạng thái THẬT. Trước đây luôn hiện "Đã đồng bộ ☁️" chỉ vì có user, kể cả
+  // khi mọi lần ghi lên cloud đều thất bại.
+  if (status === 'error')
+    return (
+      <div className="text-xs text-rose-600 dark:text-rose-400" role="alert">
+        {t('auth.syncError')}
+      </div>
+    )
+  if (status === 'syncing' || status === 'idle')
+    return (
+      <div className="text-xs text-slate-600 dark:text-slate-400">
+        {t('auth.syncing')}
+      </div>
+    )
+  return (
+    <div className="text-xs text-emerald-700 dark:text-emerald-400">
+      {t('auth.synced')}
+      {lastSyncedAt
+        ? ` · ${new Intl.DateTimeFormat(locale, {
+            hour: '2-digit',
+            minute: '2-digit',
+          }).format(new Date(lastSyncedAt))}`
+        : ''}
+    </div>
+  )
+}
 
 export function AuthSection() {
   const { t } = useI18n()
-  const { user, signInWithGoogle, signOut } = useAuthStore()
+  const { user, ready, pending, error, signInWithGoogle, signOut } =
+    useAuthStore()
 
   return (
-    <div className="border-b border-black/10 pb-4 dark:border-white/10">
-      <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+    <div className="divider-b pb-4">
+      <p className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
         {t('auth.account')}
       </p>
 
       {!isSupabaseConfigured ? (
-        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-          {t('auth.notConfigured')}
-        </p>
+        <p className="mt-2 text-sm muted">{t('auth.notConfigured')}</p>
+      ) : !ready ? (
+        // Chưa biết có phiên hay chưa -> skeleton. Bản trước hiện luôn nút "Đăng
+        // nhập với Google" rồi nháy sang tài khoản khi session về.
+        <div className="mt-2 flex items-center gap-3" aria-busy="true">
+          <div className="h-9 w-9 animate-pulse rounded-full bg-black/10 dark:bg-white/10" />
+          <div className="h-4 flex-1 animate-pulse rounded bg-black/10 dark:bg-white/10" />
+        </div>
       ) : user ? (
         <div className="mt-2 flex items-center gap-3">
           {user.user_metadata?.avatar_url ? (
@@ -34,13 +72,12 @@ export function AuthSection() {
             <div className="truncate text-sm font-medium text-slate-900 dark:text-white">
               {user.email}
             </div>
-            <div className="text-xs text-emerald-600 dark:text-emerald-400">
-              {t('auth.synced')}
-            </div>
+            <SyncBadge />
           </div>
           <button
-            onClick={() => signOut()}
-            className="rounded-lg border border-black/10 bg-black/5 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-black/10 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
+            onClick={() => void signOut()}
+            disabled={pending}
+            className="btn-ghost py-1.5"
           >
             {t('auth.signOut')}
           </button>
@@ -48,8 +85,9 @@ export function AuthSection() {
       ) : (
         <div className="mt-2">
           <button
-            onClick={() => signInWithGoogle()}
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-black/10 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/15"
+            onClick={() => void signInWithGoogle()}
+            disabled={pending}
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-black/10 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-60 dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/15"
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
               <path
@@ -69,9 +107,14 @@ export function AuthSection() {
                 d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84C6.71 7.3 9.14 5.38 12 5.38Z"
               />
             </svg>
-            {t('auth.signIn')}
+            {pending ? t('auth.signingIn') : t('auth.signIn')}
           </button>
-          <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+          {error === 'signIn' && (
+            <p role="alert" className="mt-2 text-xs text-rose-600 dark:text-rose-400">
+              {t('auth.signInError')}
+            </p>
+          )}
+          <p className="mt-2 text-xs text-slate-600 dark:text-slate-400">
             {t('auth.guestNote')}
           </p>
         </div>
